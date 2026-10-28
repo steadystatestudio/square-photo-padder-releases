@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "square-photo-padder"
+version = "1.1.2"
+description = "Desktop app for padding photos to square images without cropping anything out."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+dependencies = [
+  "Pillow>=10.4.0",
+  # Qt 6.12.0 aborts on Python 3.11 during repeated QPainter icon rendering.
+  # Keep local installs and CI on the runtime validated by both Python suites.
+  "PySide6==6.11.2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+  "ruff>=0.4.0",
+]
+packaging = [
+  "PyInstaller>=6.11.0",
+]
+
+[project.scripts]
+square-photo-padder = "photocropper.app:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+photocropper = ["assets/*.png"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

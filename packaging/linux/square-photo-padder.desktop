@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Square Photo Padder
+Comment=Pad photos to square images without cropping anything out
+Exec=square-photo-padder
+Icon=square-photo-padder
+Categories=Graphics;Photography;Utility;
+Terminal=false
+StartupNotify=true

@@ -24,5 +24,5 @@ last selected folder, appearance and optional watermark text.
 Support
 -------
 Issues: https://github.com/steadystatestudio/square-photo-padder-releases/issues
-Website: https://steady-state-studio.rpxjjnqmguarhzkg.chatgpt.site/
+Website: https://steady-state-studio.steadystatestudio1.workers.dev/
 Donate: https://ko-fi.com/steadystatestudio (optional — the app is free)

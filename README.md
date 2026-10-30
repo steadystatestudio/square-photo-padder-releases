@@ -5,7 +5,7 @@
 
 **Make photos square — no cropping, no forced watermarks, no upload required.**
 
-**[Website](https://steady-state-studio.rpxjjnqmguarhzkg.chatgpt.site/apps/square-photo-padder/)** · **[Download](https://github.com/steadystatestudio/square-photo-padder-releases/releases/latest)**
+**[Website](https://steady-state-studio.steadystatestudio1.workers.dev/apps/square-photo-padder/)** · **[Download](https://github.com/steadystatestudio/square-photo-padder-releases/releases/latest)**
 
 A free, open-source desktop app that adds colored borders to pad your photos into perfect squares. Built for online sellers who need clean, consistent listing photos on eBay, Poshmark, Mercari, OfferUp, and more.
 

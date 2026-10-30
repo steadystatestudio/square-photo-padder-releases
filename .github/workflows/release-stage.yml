@@ -1,15 +1,22 @@
-name: Stage private release candidate (draft only)
+name: Stage reviewed release candidate (draft only)
 
 on:
-  push:
-    branches: [main]
-
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Exact reviewed main commit (40 hex characters)
+        required: true
+        type: string
+      tag:
+        description: New tag matching the application version
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.sha }}
+  group: release-${{ inputs.tag }}
   cancel-in-progress: false
 
 defaults:
@@ -20,7 +27,8 @@ env:
   PYTHONUTF8: "1"
   PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
   QT_QPA_PLATFORM: offscreen
-  RELEASE_TAG: v1.1.2
+  RELEASE_TAG: ${{ inputs.tag }}
+  REVIEWED_COMMIT: ${{ inputs.commit }}
   BUILD_SOURCE_COMMIT: ${{ github.sha }}
 
 jobs:
@@ -29,7 +37,7 @@ jobs:
 
   prepare:
     needs: quality
-    if: github.repository == 'steadystatestudio/square-photo-padder-releases' && github.event_name == 'push' && github.event.repository.private == true
+    if: github.repository == 'steadystatestudio/square-photo-padder-releases' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -52,7 +60,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE_TAG="v1.1.2"
           python scripts/release.py init --tag "$RELEASE_TAG" --commit "$BUILD_SOURCE_COMMIT"
 
   build:
@@ -113,7 +120,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE_TAG="v1.1.2"
           python scripts/release.py stage --platform "$RELEASE_PLATFORM" --tag "$RELEASE_TAG" --commit "$BUILD_SOURCE_COMMIT" --tree "$BUILD_SOURCE_TREE" --release-id "$RELEASE_ID"
 
   sources:
@@ -139,7 +145,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE_TAG="v1.1.2"
           python scripts/release.py stage --platform Sources --tag "$RELEASE_TAG" --commit "$BUILD_SOURCE_COMMIT" --tree "$BUILD_SOURCE_TREE" --release-id "$RELEASE_ID"
 
   compatibility:
@@ -167,7 +172,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE_TAG="v1.1.2"
           python scripts/release.py verify-linux --tag "$RELEASE_TAG" --commit "$BUILD_SOURCE_COMMIT" --tree "$BUILD_SOURCE_TREE" --release-id "$RELEASE_ID"
       - name: Smoke the retained Ubuntu 22.04 packages on Ubuntu 24.04
         run: |
@@ -180,7 +184,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE_TAG="v1.1.2"
           python scripts/release.py stage --platform Ubuntu24 --tag "$RELEASE_TAG" --commit "$BUILD_SOURCE_COMMIT" --tree "$BUILD_SOURCE_TREE" --release-id "$RELEASE_ID"
 
   receipt:
@@ -204,6 +207,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE_TAG="v1.1.2"
           python scripts/release.py finalize --tag "$RELEASE_TAG" --commit "$BUILD_SOURCE_COMMIT" --tree "$BUILD_SOURCE_TREE" --release-id "$RELEASE_ID"
           echo "Automated gates passed. Inspect RELEASE-READY.json and complete privacy/native review before manually publishing. This release is still a draft prerelease." >> "$GITHUB_STEP_SUMMARY"

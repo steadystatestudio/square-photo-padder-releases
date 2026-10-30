@@ -1,13 +1,21 @@
 # Square Photo Padder
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Latest release](https://img.shields.io/github/v/release/steadystatestudio/square-photo-padder-releases)](https://github.com/steadystatestudio/square-photo-padder-releases/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/steadystatestudio/square-photo-padder-releases?include_prereleases)](https://github.com/steadystatestudio/square-photo-padder-releases/releases/latest)
 
 **Make photos square — no cropping, no forced watermarks, no upload required.**
 
 **[Website](https://steady-state-studio.steadystatestudio1.workers.dev/apps/square-photo-padder/)** · **[Download](https://github.com/steadystatestudio/square-photo-padder-releases/releases/latest)**
 
-A free, open-source desktop app that adds colored borders to pad your photos into perfect squares. Built for online sellers who need clean, consistent listing photos on eBay, Poshmark, Mercari, OfferUp, and more.
+A free desktop app for Windows and Linux that fits complete photos inside a square.
+Use it for square galleries, collages, catalogues and other workflows that accept
+padded images. Add a batch, inspect the preview, and save JPEG copies beside your originals.
+All features work offline; no account, uploads, subscription or telemetry.
+
+**Check the destination before using padding or watermarks.** This app does not
+certify marketplace compliance. [eBay disallows added borders, text and watermarks](https://www.ebay.com/help/policies/listing-policies/picture-policy?id=4370).
+[Poshmark uses portrait cover photos](https://blog.poshmark.com/2026/03/25/your-guide-to-portrait-photos/).
+Choose this tool when your destination calls for square images.
 
 <p align="center">
   <img src="docs/screenshot.png" alt="Square Photo Padder main window" width="420">
@@ -15,7 +23,7 @@ A free, open-source desktop app that adds colored borders to pad your photos int
 
 ## Why?
 
-Most marketplaces auto-crop photos to square thumbnails. Sellers lose control of what buyers see first. Square Photo Padder gives you back that control — drag in your photos, get perfect squares out.
+A square crop can cut off a tall subject or the edges of a wide photo. Padding preserves the whole photo and fills the unused area with your chosen background color.
 
 ## Features
 
@@ -24,7 +32,7 @@ Most marketplaces auto-crop photos to square thumbnails. Sellers lose control of
 - **Background colors** — black by default, or pick any custom color (remembered)
 - **Watermark** — blended translucent text in any corner, center, or tiled across the image
 - **Rotation** — 90° increments with live preview
-- **Resize presets** — marketplace standards (1000, 1080, 1600, 2048) or a custom size; images are never upscaled
+- **Resize presets** — common square sizes (1000, 1080, 1600, 2048) or a custom size; images are never upscaled
 - **Live preview** — see exactly what you'll get before processing
 - **Resizable preview** — maximize the window for a larger centered square preview
 - **Keyboard review** — Left/Right rotate, Up/Down browse, Enter saves the current photo
@@ -34,14 +42,14 @@ Most marketplaces auto-crop photos to square thumbnails. Sellers lose control of
 
 ## Download
 
-Get the latest release from [GitHub Releases](https://github.com/steadystatestudio/square-photo-padder-releases/releases).
+Choose the Windows ZIP or Linux AppImage from [GitHub Releases](https://github.com/steadystatestudio/square-photo-padder-releases/releases).
 
 | Platform | Download |
 |----------|----------|
 | Windows  | `Square-Photo-Padder-windows.zip` — unzip and run |
 | Linux    | `Square-Photo-Padder-x86_64.AppImage` — chmod +x and run |
 
-No Python installation required.
+No Python installation required. Qt/PySide source archives are included for developers and license compliance; you do not need them to run the app.
 
 To update on Linux, close the app and replace the existing
 `Square-Photo-Padder-x86_64.AppImage` with the new download in the same location.
@@ -58,22 +66,24 @@ settings folder once to `Square-Photo-Padder-x86_64.AppImage.home` or
 
 ## Quick Start
 
+The toolbar keeps Add Photos, Add Folder and Clear together. Help, Donate and Settings stay at the right. Process All saves the batch; Save Photo saves only the displayed photo. The separate progress bar and status line remain visible after the job.
+
 1. Download and run the app
 2. Drag photos or folders onto the window, or click **Add Photos**
    Double-click a photo to add it immediately, or select photos and folders and click Open.
 3. Adjust settings (resize, background color, watermark)
-4. Click **Process**
+4. Click **Process All**
 5. Find your squared photos next to the originals (`photo (1).jpg`)
 
 To save one photo at a time, browse with **Up/Down**, rotate with **Left/Right**,
 and press **Enter** or click **Save Photo**. Saving keeps you on the current photo;
-**Process** still saves the whole batch. Text and size fields keep their normal keyboard behavior.
+**Process All** still saves the whole batch. Text and size fields keep their normal keyboard behavior.
 
 By default originals are never modified — outputs get collision-safe names. Enable **Overwrite** to replace `photo.jpg` in place instead (this replaces the original for .jpg photos).
 
 ## Theme
 
-Open **Settings** (the gear icon) to choose **System**, **Dark**, or **Light** appearance
+Open **Settings** in the top-right toolbar to choose **System**, **Dark**, or **Light** appearance
 and whether to show tooltips. Click **Save** to apply changes or **Cancel** to discard them.
 System appearance automatically matches your OS theme.
 
@@ -182,7 +192,7 @@ Keep backups before enabling Overwrite; it is not a recovery or undo system.
 
 ## Release verification
 
-Private candidate staging runs tests on Windows and Ubuntu, builds native packages,
+Manually dispatched draft staging runs tests on Windows and Ubuntu, builds native packages,
 checks real frozen GUI/JPEG behavior, and retains exact checksums in a draft release.
 It never publishes or changes repository visibility. Complete matching library
 sources and license notices accompany public binaries. See `THIRD_PARTY_NOTICES.md`.

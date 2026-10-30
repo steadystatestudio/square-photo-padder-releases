@@ -57,12 +57,12 @@ def validate_draft(release: dict, tag: str, commit: str) -> None:
 
 def verify_remote_tag(tag: str, commit: str) -> None:
     # Draft releases may not have a tag ref yet. Verify the immutable commit and
-    # private destination instead; this script can never publish or change visibility.
+    # trusted destination instead; this script can never publish or change visibility.
     repository = api(f"repos/{REPOSITORY}")
-    if repository.get("private") is not True:
-        raise ValueError("Staging is restricted to the private development repository")
+    if repository.get("full_name") != REPOSITORY:
+        raise ValueError("Staging is restricted to the Studio release repository")
     if api(f"repos/{REPOSITORY}/commits/{commit}").get("sha") != commit:
-        raise ValueError("Candidate commit is missing from the private repository")
+        raise ValueError("Candidate commit is missing from the release repository")
     try:
         obj = api(f"repos/{REPOSITORY}/git/ref/tags/{tag}")["object"]
     except subprocess.CalledProcessError as exc:
@@ -83,6 +83,9 @@ def verify_remote_tag(tag: str, commit: str) -> None:
 def current_release(args) -> dict:
     release = api(f"repos/{REPOSITORY}/releases/{args.release_id}")
     validate_draft(release, args.tag, args.commit)
+    matches = [item for item in release_inventory() if item.get("tag_name") == args.tag]
+    if len(matches) != 1 or matches[0].get("id") != release.get("id"):
+        raise ValueError("Release tag does not uniquely identify the selected draft")
     return release
 
 
@@ -138,11 +141,25 @@ def check_build_info(info: dict, commit: str, tree: str, platform: str) -> None:
             raise ValueError("BUILD-INFO dependencies do not match retained sources")
 
 
+def release_inventory():
+    releases = []
+    for page in range(1, 101):
+        batch = api(f"repos/{REPOSITORY}/releases?per_page=100&page={page}")
+        if not isinstance(batch, list) or any(not isinstance(item, dict) for item in batch):
+            raise ValueError("Invalid release inventory")
+        releases.extend(batch)
+        if len(batch) < 100:
+            return releases
+    raise ValueError("Release inventory pagination exceeded its safety bound")
+
+
 def init(args) -> None:
     tree = validate_candidate(args.tag, args.commit)
     verify_remote_tag(args.tag, args.commit)
-    releases = api(f"repos/{REPOSITORY}/releases?per_page=100")
+    releases = release_inventory()
     matches = [release for release in releases if release["tag_name"] == args.tag]
+    if len(matches) > 1:
+        raise ValueError("Ambiguous release inventory")
     if matches:
         release = matches[0]
         validate_draft(release, args.tag, args.commit)
@@ -315,8 +332,12 @@ def main(argv=None) -> int:
     parser.add_argument("--release-id", type=int)
     parser.add_argument("--platform", choices=PLATFORMS)
     args = parser.parse_args(argv)
-    if os.environ.get("GITHUB_REPOSITORY") != REPOSITORY:
-        raise ValueError("Release staging is restricted to the Studio repository")
+    if (os.environ.get("GITHUB_REPOSITORY") != REPOSITORY
+            or os.environ.get("GITHUB_REF") != "refs/heads/main"
+            or os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch"
+            or args.commit != os.environ.get("GITHUB_SHA")
+            or args.commit != os.environ.get("REVIEWED_COMMIT")):
+        raise ValueError("Release staging requires a manual dispatch of the exact reviewed Studio main commit")
     if args.command != "init" and (not args.release_id or not args.tree):
         parser.error("This operation requires --release-id and --tree")
     if args.command == "stage" and not args.platform:

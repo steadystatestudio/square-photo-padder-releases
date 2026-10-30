@@ -13,10 +13,14 @@ def main() -> None:
     executable = Path(sys.argv[1]).resolve()
     environment = dict(os.environ, QT_QPA_PLATFORM=os.environ.get("PADDER_SMOKE_PLATFORM", "offscreen"))
     with tempfile.TemporaryDirectory(prefix="padder-package-") as directory:
-        root = Path(directory)
+        root = Path(directory) / "run"
         options = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
-        subprocess.run([str(executable), "--smoke-test", str(root)], cwd=root, env=environment,
-                       timeout=60, check=True, **options)
+        completed = subprocess.run([str(executable), "--smoke-test", str(root)], cwd=directory, env=environment,
+                                   timeout=60, **options)
+        if completed.returncode != 0:
+            error = root / "error.txt"
+            raise RuntimeError(error.read_text(encoding="utf-8") if error.exists()
+                               else f"Packaged GUI stopped with exit code {completed.returncode}")
         result = json.loads((root / "result.json").read_text(encoding="utf-8"))
         assert result["success"] and (root / "ui.png").stat().st_size > 1000
         if len(sys.argv) > 2:

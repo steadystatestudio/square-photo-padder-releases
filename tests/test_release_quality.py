@@ -134,3 +134,14 @@ def test_version_consistent():
     root = Path(__file__).resolve().parents[1]
     assert APP_VERSION == tomllib.loads((root / 'pyproject.toml').read_text())['project']['version']
     assert f"'ProductVersion', '{APP_VERSION}'" in (root / 'packaging/windows/version.txt').read_text()
+
+
+def test_diagnostic_refuses_existing_output(tmp_path):
+    from photocropper.smoke import run
+
+    original = tmp_path / 'sample.png'
+    original.write_bytes(b'preserve existing file')
+    with pytest.raises(FileExistsError):
+        run(str(tmp_path))
+    assert original.read_bytes() == b'preserve existing file'
+    assert set(tmp_path.iterdir()) == {original}

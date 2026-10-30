@@ -8,6 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from build_environment import pyinstaller_environment
 from build_manifest import write_manifest
 from packaging_notices import copy_notices, verify_qt_subset
 
@@ -26,7 +27,8 @@ def main() -> None:
     windows = sys.platform == "win32"
     name = "Square-Photo-Padder" if windows else "square-photo-padder"
     spec = "photocropper-windows.spec" if windows else "photocropper.spec"
-    subprocess.run([sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", spec], check=True)
+    subprocess.run([sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", spec],
+                   check=True, env=pyinstaller_environment())
     bundle = dist / name
     verify_qt_subset(bundle)
     copy_notices(ROOT, bundle, sys.platform)

@@ -372,8 +372,8 @@ def test_open_paths_enables_process_button(tmp_path: Path) -> None:
     assert window.process_btn.isEnabled() is True
     # The label never carries the file count (tester feedback); the count
     # shows as segments on the button face.
-    assert window.process_btn.text() == "Process"
-    assert window.process_btn.progress_total() == 1
+    assert window.process_btn.text() == "Process All"
+    assert window.progress_bar.progress_total() == 1
 
 
 def test_open_paths_sizes_button_segments_to_count(tmp_path: Path) -> None:
@@ -387,8 +387,8 @@ def test_open_paths_sizes_button_segments_to_count(tmp_path: Path) -> None:
     window = MainWindow()
     window._open_paths([a, b])
 
-    assert window.process_btn.text() == "Process"
-    assert window.process_btn.progress_total() == 2
+    assert window.process_btn.text() == "Process All"
+    assert window.progress_bar.progress_total() == 2
 
 
 def test_rotation_has_no_degree_label(tmp_path: Path) -> None:
@@ -664,21 +664,21 @@ def test_toolbar_buttons_exist(tmp_path: Path) -> None:
     highlighted = window.container.findChildren(QPushButton, "primaryBtn")
     toolbar = {btn.text() for btn in window.container.findChildren(QPushButton, "toolbarBtn")}
     assert highlighted == []
-    assert {"Add Photos", "Clear", "Help"}.issubset(toolbar)
+    assert {"Add Photos", "Add Folder", "Clear", "Help", "Settings"}.issubset(toolbar)
     assert "About" not in toolbar
     assert not hasattr(window, "about_btn")
 
 
-def test_settings_gear_is_icon_only_in_top_right(tmp_path: Path) -> None:
+def test_settings_label_is_readable_in_top_right(tmp_path: Path) -> None:
     """The gear is a minimal icon-only button, not a labeled toolbar button,
     and it sits last in the toolbar row (top-right corner)."""
     _configure_settings(tmp_path)
     _app()
     window = MainWindow()
 
-    assert window.settings_btn.objectName() == "iconBtn"
-    assert window.settings_btn.text() == ""
-    assert not window.settings_btn.icon().isNull()
+    assert window.settings_btn.objectName() == "toolbarBtn"
+    assert window.settings_btn.text() == "Settings"
+    assert window.settings_btn.icon().isNull()
 
     # The toolbar is the first row in the main column layout.
     toolbar_layout = window.container.layout().itemAt(0).layout()
@@ -733,7 +733,7 @@ def test_process_button_shows_processing_state(tmp_path: Path) -> None:
 
     # Before processing
     assert window.process_btn.isEnabled()
-    assert window.process_btn.text() == "Process"
+    assert window.process_btn.text() == "Process All"
 
     # Process
     window._process_pending()
@@ -947,7 +947,7 @@ def test_watermark_bar_spans_window_above_process(tmp_path: Path) -> None:
     }
     # Its own full-width slot in the main column, right above Process.
     save_row = layout.itemAt(positions[window.watermark_input] + 1).layout()
-    assert save_row.itemAt(0).widget() is window.save_photo_btn
+    assert save_row.itemAt(2).layout().itemAt(1).widget() is window.save_photo_btn
     assert save_row.itemAt(1).widget() is window.process_btn
 
 
@@ -1036,7 +1036,7 @@ def test_process_button_disabled_initially(tmp_path: Path) -> None:
     window = MainWindow()
 
     assert window.process_btn.isEnabled() is False
-    assert window.process_btn.text() == "Process"
+    assert window.process_btn.text() == "Process All"
 
 
 def test_duplicate_paths_deduplicated(tmp_path: Path) -> None:
@@ -1178,7 +1178,7 @@ def test_process_button_has_no_segments_initially(tmp_path: Path) -> None:
 
     window = MainWindow()
 
-    assert window.process_btn.progress_total() == 0
+    assert window.progress_bar.progress_total() == 0
     assert window.process_btn.isEnabled() is False
 
 
@@ -1193,9 +1193,9 @@ def test_process_button_segments_track_batch(tmp_path: Path) -> None:
 
     # After processing, the button's segments are full and the label is back
     # to plain Process.
-    assert window.process_btn.progress_total() == 3
-    assert window.process_btn.progress_value() == 3
-    assert window.process_btn.text() == "Process"
+    assert window.progress_bar.progress_total() == 3
+    assert window.progress_bar.progress_value() == 3
+    assert window.process_btn.text() == "Process All"
 
 
 def test_top_corner_watermark_positions_available(tmp_path: Path) -> None:
@@ -1218,21 +1218,21 @@ def test_custom_button_label_has_no_ellipsis(tmp_path: Path) -> None:
     assert window._custom_btn.text() == "Custom"
 
 
-def test_no_separate_progress_bar(tmp_path: Path) -> None:
+def test_progress_is_separate_from_process_action(tmp_path: Path) -> None:
     """The segmented bar is merged into the Process button (tester feedback)."""
     _configure_settings(tmp_path)
     _app()
     window = MainWindow()
 
-    assert not hasattr(window, "progress_bar")
+    assert window.progress_bar is not window.process_btn
 
     # After a batch finishes the button stays enabled with full segments.
     paths = _make_images(tmp_path, 2)
     window._open_paths(paths)
     window._process_pending()
     assert window.process_btn.isEnabled()
-    assert window.process_btn.progress_value() == 2
-    assert window.process_btn.text() == "Process"
+    assert window.progress_bar.progress_value() == 2
+    assert window.process_btn.text() == "Process All"
 
 
 def test_output_label_omits_px(tmp_path: Path) -> None:
@@ -1266,7 +1266,7 @@ def test_clear_button_resets_loaded_photos(tmp_path: Path) -> None:
     assert window._preview_paths == []
     assert window._preview_path is None
     assert window.process_btn.isEnabled() is False
-    assert window.process_btn.text() == "Process"
+    assert window.process_btn.text() == "Process All"
     assert window.clear_btn.isEnabled() is False
     # Files on disk are untouched
     assert all(p.exists() for p in paths)
@@ -1393,17 +1393,17 @@ def test_stylesheet_has_no_hardcoded_base_font(tmp_path: Path) -> None:
     assert "font-size: 10pt" not in app.styleSheet()
 
 
-def test_process_button_face_is_segmented(tmp_path: Path) -> None:
+def test_progress_track_is_segmented(tmp_path: Path) -> None:
     """The button face draws one segment per file at small counts."""
-    from photocropper.gui import ProcessButton
+    from photocropper.gui import SegmentProgress
 
     _configure_settings(tmp_path)
     _app()
 
     window = MainWindow()
-    assert isinstance(window.process_btn, ProcessButton)
+    assert isinstance(window.progress_bar, SegmentProgress)
 
-    btn = ProcessButton()
+    btn = SegmentProgress()
     btn.resize(400, 40)
     btn.set_progress(2, 5)
     pixmap = btn.grab()
@@ -1411,19 +1411,19 @@ def test_process_button_face_is_segmented(tmp_path: Path) -> None:
 
     image = pixmap.toImage()
     # A filled segment (left side) must differ in color from an unfilled one (right side).
-    filled = image.pixelColor(image.width() // 5, image.height() // 2)
-    unfilled = image.pixelColor(image.width() - image.width() // 5, image.height() // 2)
+    filled = image.pixelColor(image.width() // 5, image.height() - 7)
+    unfilled = image.pixelColor(image.width() - image.width() // 5, image.height() - 7)
     assert filled != unfilled
 
 
-def test_process_button_chunks_segments_for_huge_batches(tmp_path: Path) -> None:
+def test_progress_track_groups_huge_batches(tmp_path: Path) -> None:
     """80+ files: segments group multiple files each instead of vanishing."""
-    from photocropper.gui import ProcessButton
+    from photocropper.gui import SegmentProgress
 
     _configure_settings(tmp_path)
     _app()
 
-    btn = ProcessButton()
+    btn = SegmentProgress()
     btn.resize(400, 40)
     btn.set_progress(250, 500)
     pixmap = btn.grab()
@@ -1432,8 +1432,8 @@ def test_process_button_chunks_segments_for_huge_batches(tmp_path: Path) -> None
     image = pixmap.toImage()
     # The half-done face must still read as progress: filled on the left,
     # unfilled track on the right.
-    filled = image.pixelColor(image.width() // 8, image.height() // 2)
-    unfilled = image.pixelColor(image.width() - image.width() // 8, image.height() // 2)
+    filled = image.pixelColor(image.width() // 8, image.height() - 7)
+    unfilled = image.pixelColor(image.width() - image.width() // 8, image.height() - 7)
     assert filled != unfilled
 
 
@@ -1535,19 +1535,19 @@ def test_add_photos_starts_load_animation(tmp_path: Path) -> None:
     window = MainWindow()
     window._open_paths(imgs)
 
-    assert window.process_btn.progress_total() == 3
+    assert window.progress_bar.progress_total() == 3
     assert window._load_anim_timer.isActive()
     # The button is clickable while its face fills up.
     assert window.process_btn.isEnabled()
 
     # Drive the animation to completion.
-    while window.process_btn.progress_value() < window.process_btn.progress_total():
+    while window.progress_bar.progress_value() < window.progress_bar.progress_total():
         window._advance_load_animation()
     assert not window._load_anim_timer.isActive()
 
     # The filled segments stay put; the label is still plain Process.
-    assert window.process_btn.progress_value() == 3
-    assert window.process_btn.text() == "Process"
+    assert window.progress_bar.progress_value() == 3
+    assert window.process_btn.text() == "Process All"
 
 
 def test_load_animation_finishes_quickly_for_huge_batches(tmp_path: Path) -> None:
@@ -1578,7 +1578,7 @@ def test_clear_stops_load_animation(tmp_path: Path) -> None:
     window._clear_photos()
 
     assert not window._load_anim_timer.isActive()
-    assert window.process_btn.progress_total() == 0
+    assert window.progress_bar.progress_total() == 0
     assert window.process_btn.isEnabled() is False
 
 
@@ -1594,8 +1594,8 @@ def test_processing_reuses_button_segments(tmp_path: Path) -> None:
     window._process_pending()
 
     assert not window._load_anim_timer.isActive()
-    assert window.process_btn.progress_value() == window.process_btn.progress_total() == 1
-    assert window.process_btn.text() == "Process"
+    assert window.progress_bar.progress_value() == window.progress_bar.progress_total() == 1
+    assert window.process_btn.text() == "Process All"
 
 
 def test_keyboard_rotates_and_saves_only_current_photo(tmp_path: Path) -> None:
@@ -1910,9 +1910,9 @@ def test_cancel_stops_between_photos_and_recovers_for_next_batch(tmp_path: Path)
     assert window.status_label.text() == (
         "Stopped after 1 of 3 file(s): 1 succeeded, 0 failed; 2 not processed."
     )
-    assert window.process_btn.progress_value() == 1
-    assert window.process_btn.progress_total() == 3
-    assert window.process_btn.text() == "Process"
+    assert window.progress_bar.progress_value() == 1
+    assert window.progress_bar.progress_total() == 3
+    assert window.process_btn.text() == "Process All"
     assert window.process_btn.isEnabled() and window.save_photo_btn.isEnabled()
     assert not window._processing
     window._process_pending()

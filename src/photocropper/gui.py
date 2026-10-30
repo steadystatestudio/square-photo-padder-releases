@@ -26,12 +26,14 @@ from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
     QDialog,
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QLayout,
     QLineEdit,
     QMainWindow,
     QMessageBox,
+    QProgressBar,
     QPushButton,
     QSizePolicy,
     QSpinBox,
@@ -55,7 +57,6 @@ from photocropper.constants import (
 )
 from photocropper.dialogs import FileFolderDialog, SettingsDialog
 from photocropper.icons import (
-    make_gear_icon,
     make_position_icon,
     make_rotate_icon,
     make_rotate_pixmap,
@@ -125,29 +126,29 @@ class FilenameLabel(QLabel):
         self._elide()
 
 
-class ProcessButton(QPushButton):
-    """The Process button with the segmented progress bar drawn on its face.
-
-    One segment per file: they fill as photos load and again as files are
-    processed — the button itself is the progress bar. When per-file segments
-    would be too thin, each segment stands for a run of files and fills
-    partially as that run completes."""
+class SegmentProgress(QProgressBar):
+    """Read-only file progress, separate from the action that starts a job."""
 
     _GAP = 2.0
     _MIN_SEGMENT_PX = 5.0
 
     def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__("Process", parent)
+        super().__init__(parent)
         self._total = 0
         self._done = 0
         self._progress_text: str | None = None
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFormat("Ready")
+        self.setMinimumHeight(44)
+        self.setAccessibleName("Photo progress")
 
     def set_progress(self, done: int, total: int, text: str | None = None) -> None:
         """Update the fill; `text` temporarily replaces the Process label."""
         self._done = done
         self._total = total
         self._progress_text = text
+        self.setRange(0, max(1, total))
+        self.setValue(done)
+        self.setToolTip(text or (f"{done} / {total} photos" if total else "Ready"))
         self.update()
 
     def progress_value(self) -> int:
@@ -175,7 +176,9 @@ class ProcessButton(QPushButton):
 
         total = self._total
         done = self._done
-        inner = rect.adjusted(4, 4, -4, -4)
+        # Put the colored track below its label; text never straddles two
+        # backgrounds with incompatible contrast requirements.
+        inner = rect.adjusted(4, max(4, rect.height() - 10), -4, -4)
         if total >= 1 and inner.width() > 0:
             max_segments = max(1, int((inner.width() + self._GAP) // (self._MIN_SEGMENT_PX + self._GAP)))
             seg_count = min(total, max_segments)
@@ -192,15 +195,13 @@ class ProcessButton(QPushButton):
                     painter.drawRoundedRect(
                         QRectF(x, inner.top(), segment_width * fraction, inner.height()), 2, 2
                     )
-            if done >= total:
-                # Fully filled face: use the highlight's contrasting text.
-                text_color = QColor(active_colors.get("highlight_text", "#ffffff"))
 
         font = painter.font()
         font.setBold(True)
         painter.setFont(font)
         painter.setPen(QPen(text_color))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self._progress_text or self.text())
+        painter.drawText(rect.adjusted(0, 0, 0, -8), Qt.AlignmentFlag.AlignCenter,
+                         self._progress_text or (f"{done} / {total} photos" if total else "Ready"))
         painter.end()
 
 
@@ -274,6 +275,11 @@ class MainWindow(QMainWindow):
         self.add_btn.clicked.connect(self._browse)
         self._set_tooltip(self.add_btn, "Add photos or folders to process")
 
+        self.add_folder_btn = QPushButton("Add Folder")
+        self.add_folder_btn.setObjectName("toolbarBtn")
+        self.add_folder_btn.clicked.connect(self._browse_folder)
+        self._set_tooltip(self.add_folder_btn, "Add the supported photos in one folder")
+
         self.clear_btn = QPushButton("Clear")
         self.clear_btn.setObjectName("toolbarBtn")
         self.clear_btn.setEnabled(False)
@@ -286,6 +292,7 @@ class MainWindow(QMainWindow):
         self._set_tooltip(self.help_btn, f"How to use {APP_NAME}, and about this app")
 
         toolbar_layout.addWidget(self.add_btn)
+        toolbar_layout.addWidget(self.add_folder_btn)
         toolbar_layout.addWidget(self.clear_btn)
         toolbar_layout.addStretch()
         toolbar_layout.addWidget(self.help_btn)
@@ -298,10 +305,9 @@ class MainWindow(QMainWindow):
             self._set_tooltip(self.donate_btn, "Support development on Ko-fi")
             toolbar_layout.addWidget(self.donate_btn)
 
-        # Minimal icon-only gear, pinned to the top-right corner: opens
-        # Settings (currently just the tooltip toggle).
-        self.settings_btn = QPushButton()
-        self.settings_btn.setObjectName("iconBtn")
+        # Keep the shared Studio actions in the top-right corner.
+        self.settings_btn = QPushButton("Settings")
+        self.settings_btn.setObjectName("toolbarBtn")
         self.settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.settings_btn.clicked.connect(self._show_settings)
         self._set_tooltip(self.settings_btn, "Settings")
@@ -492,8 +498,8 @@ class MainWindow(QMainWindow):
         controls_widget.setLayout(controls_layout)
         self.controls_widget = controls_widget
 
-        # --- Process button (doubles as the segmented progress bar) ---
-        self.process_btn = ProcessButton()
+        # Actions keep a stable position; progress remains visible underneath.
+        self.process_btn = QPushButton("Process All")
         self.process_btn.setObjectName("processBtn")
         self.process_btn.setEnabled(False)
         self.process_btn.clicked.connect(self._process_or_cancel)
@@ -502,6 +508,7 @@ class MainWindow(QMainWindow):
         self.save_photo_btn.setEnabled(False)
         self.save_photo_btn.clicked.connect(self._save_current_photo)
         self._set_tooltip(self.save_photo_btn, "Pad and save the displayed photo (Enter)")
+        self.progress_bar = SegmentProgress()
 
         # --- Status: one permanent summary line (no results box below) ---
         self.status_label = QLabel("")
@@ -513,15 +520,24 @@ class MainWindow(QMainWindow):
 
         # --- Main layout ---
         layout = QVBoxLayout()
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
         layout.addLayout(toolbar_layout)
         layout.addLayout(preview_layout, stretch=1)
         layout.addWidget(controls_widget)
         # One long window-wide watermark bar, just above Process.
         layout.addWidget(self.watermark_input)
         save_row = QHBoxLayout()
-        save_row.addWidget(self.save_photo_btn)
-        save_row.addWidget(self.process_btn, 1)
+        left_balance = QWidget()
+        left_balance.setMinimumWidth(self.save_photo_btn.sizeHint().width())
+        save_row.addWidget(left_balance, 1)
+        save_row.addWidget(self.process_btn)
+        right_actions = QHBoxLayout()
+        right_actions.addStretch()
+        right_actions.addWidget(self.save_photo_btn)
+        save_row.addLayout(right_actions, 1)
         layout.addLayout(save_row)
+        layout.addWidget(self.progress_bar)
         layout.addWidget(self.status_label)
         layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
 
@@ -567,14 +583,14 @@ class MainWindow(QMainWindow):
             self._cancel_requested = False
             self._close_when_finished = False
         for widget in (
-            self.add_btn, self.clear_btn, self.settings_btn, self.controls_widget,
+            self.add_btn, self.add_folder_btn, self.clear_btn, self.settings_btn, self.controls_widget,
             self.watermark_input, self.save_photo_btn,
         ):
             widget.setEnabled(not busy)
         has_photos = bool(self._preview_paths)
         for widget in (self.clear_btn, self.save_photo_btn):
             widget.setEnabled(not busy and has_photos)
-        self.process_btn.setText("Cancel" if busy else "Process")
+        self.process_btn.setText("Cancel" if busy else "Process All")
         self.process_btn.setEnabled(busy or has_photos)
         self._set_tooltip(
             self.process_btn,
@@ -590,8 +606,8 @@ class MainWindow(QMainWindow):
         self._cancel_requested = True
         self.process_btn.setEnabled(False)
         self.process_btn.setText("Stopping…")
-        self.process_btn.set_progress(
-            self.process_btn.progress_value(), self.process_btn.progress_total(), text="Stopping…",
+        self.progress_bar.set_progress(
+            self.progress_bar.progress_value(), self.progress_bar.progress_total(), text="Stopping…",
         )
         self._set_status("Stopping safely after the current photo…")
 
@@ -638,6 +654,15 @@ class MainWindow(QMainWindow):
                 settings.setValue("browse/last_directory", str(anchor))
                 self._open_paths(paths)
 
+    def _browse_folder(self) -> None:
+        settings = _settings()
+        folder = QFileDialog.getExistingDirectory(
+            self, "Add Folder", settings.value("browse/last_directory", "")
+        )
+        if folder:
+            settings.setValue("browse/last_directory", folder)
+            self._open_paths([Path(folder)])
+
     def _clear_photos(self) -> None:
         if self._processing:
             return
@@ -660,6 +685,7 @@ class MainWindow(QMainWindow):
 
     def _set_status(self, text: str) -> None:
         self.status_label.setText(text)
+        self._set_tooltip(self.status_label, text)
 
     # --- Tooltips ---
 
@@ -721,7 +747,7 @@ class MainWindow(QMainWindow):
 
     def _start_load_animation(self, count: int) -> None:
         self._load_anim_timer.stop()
-        self.process_btn.set_progress(0, count)
+        self.progress_bar.set_progress(0, count)
         # Step through several files per tick on big batches so the fill
         # always completes in roughly half a second, whatever the count.
         self._load_anim_step = max(1, math.ceil(count / 36))
@@ -729,16 +755,16 @@ class MainWindow(QMainWindow):
         self._load_anim_timer.start()
 
     def _advance_load_animation(self) -> None:
-        total = self.process_btn.progress_total()
-        done = min(total, self.process_btn.progress_value() + self._load_anim_step)
-        self.process_btn.set_progress(done, total)
+        total = self.progress_bar.progress_total()
+        done = min(total, self.progress_bar.progress_value() + self._load_anim_step)
+        self.progress_bar.set_progress(done, total)
         if done >= total:
             self._load_anim_timer.stop()
 
     def _stop_load_animation(self) -> None:
         self._load_anim_timer.stop()
         if not self._processing:
-            self.process_btn.set_progress(0, 0)
+            self.progress_bar.set_progress(0, 0)
 
     def _process_pending(self) -> None:
         if self._processing or not self._pending_paths:
@@ -856,12 +882,12 @@ class MainWindow(QMainWindow):
             total = len(expand_input_paths(unique_paths))
             resize_label = options.resize.output_label
             self._set_status(f"Processing {total} item(s) with size {resize_label}…")
-            self.process_btn.set_progress(0, total, text=f"0 / {total} · Cancel" if total else None)
+            self.progress_bar.set_progress(0, total, text=f"Processing 0 / {total}" if total else None)
             QApplication.processEvents()
 
             def _on_progress(current: int, _total: int, _path: Path) -> None:
-                label = "Stopping…" if self._cancel_requested else f"{current} / {total} · Cancel"
-                self.process_btn.set_progress(current, total, text=label)
+                label = "Stopping…" if self._cancel_requested else f"Processing {current} / {total}"
+                self.progress_bar.set_progress(current, total, text=label)
                 QApplication.processEvents()
 
             batch = process_images(
@@ -872,7 +898,7 @@ class MainWindow(QMainWindow):
                 cancelled=lambda: self._cancel_requested,
             )
             # Only completed files fill the segments when a batch is stopped.
-            self.process_btn.set_progress(len(batch.results), total)
+            self.progress_bar.set_progress(len(batch.results), total)
             replaced = {
                 result.source_path for result in batch.results
                 if result.success and result.destination_path == result.source_path
@@ -1102,8 +1128,6 @@ class MainWindow(QMainWindow):
         for btn, clockwise in ((self.rotate_ccw_btn, False), (self.rotate_cw_btn, True)):
             btn.setIcon(make_rotate_icon(clockwise, off_color, self._icon_px, dpr))
             btn.setIconSize(icon_size)
-        self.settings_btn.setIcon(make_gear_icon(off_color, self._icon_px, dpr))
-        self.settings_btn.setIconSize(icon_size)
 
     def changeEvent(self, event: QEvent) -> None:  # noqa: N802
         if event.type() in (QEvent.Type.PaletteChange, QEvent.Type.ApplicationPaletteChange):

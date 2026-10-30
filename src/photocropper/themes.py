@@ -416,7 +416,6 @@ def apply_theme(app: QApplication) -> None:
 
 def _apply_theme(app: QApplication) -> None:
     import os
-    import sys
 
     from photocropper.settings import load_appearance
 
@@ -429,25 +428,12 @@ def _apply_theme(app: QApplication) -> None:
         appearance = load_appearance()
     dark = _is_system_dark_mode() if appearance == "system" else appearance == "dark"
 
-    # Try to read actual GTK theme colors on Linux
-    scheme: dict[str, str] | None = None
-    if sys.platform.startswith("linux") and appearance == "system":
-        gtk_colors = _read_gtk_colors()
-        if gtk_colors:
-            scheme = _gtk_colors_to_scheme(gtk_colors, dark) or None
+    # Studio colors stay consistent; System follows the OS light/dark choice.
+    scheme = _D if dark else _L
+    active_colors.update(scheme)
+    _apply_gtk_palette(app, scheme)
+    _apply_styled_sheet(app, font_family, scheme)
 
-    if scheme:
-        active_colors.update(scheme)
-        _apply_gtk_palette(app, scheme)
-        _apply_styled_sheet(app, font_family, scheme)
-    elif dark:
-        active_colors.update(_D)
-        _apply_dark_palette(app)
-        _apply_styled_sheet(app, font_family, _D)
-    else:
-        active_colors.update(_L)
-        _apply_light_palette(app)
-        _apply_styled_sheet(app, font_family, _L)
 
 
 # ---------------------------------------------------------------------------
@@ -456,41 +442,41 @@ def _apply_theme(app: QApplication) -> None:
 
 # Dark colors — tuned to blend with Linux Mint-Y-Dark and similar warm-neutral themes
 _D = {
-    "window": "#2d2d2d",
-    "text": "#e8e8e8",
+    "window": "#2c2c2c",
+    "text": "#f1f1f1",
     "base": "#252525",
-    "button": "#3c3c3c",
-    "button_text": "#e8e8e8",
+    "button": "#252525",
+    "button_text": "#f1f1f1",
     "border": "#555555",
     "hover": "#4a4a4a",
     "pressed": "#2a2a2a",
-    "highlight": "#5294e2",
-    "highlight_text": "#ffffff",
+    "highlight": "#508fdb",
+    "highlight_text": "#111111",
     "highlight_hover": "#6ba4e8",
     "disabled_bg": "#3c3c3c",
     "disabled_text": "#7a7a7a",
-    "status": "#b8b8b8",
-    "input_text": "#e8e8e8",
+    "status": "#b5b5b5",
+    "input_text": "#f1f1f1",
     "selected": "#4a4a4a",
 }
 
 # Light colors
 _L = {
-    "window": "#f5f5f5",
-    "text": "#202020",
+    "window": "#f3f3f3",
+    "text": "#222222",
     "base": "#ffffff",
-    "button": "#e4e4e4",
-    "button_text": "#202020",
-    "border": "#c8c8c8",
+    "button": "#ffffff",
+    "button_text": "#222222",
+    "border": "#cccccc",
     "hover": "#d4d4d4",
     "pressed": "#bfbfbf",
-    "highlight": "#5294e2",
-    "highlight_text": "#ffffff",
+    "highlight": "#508fdb",
+    "highlight_text": "#111111",
     "highlight_hover": "#3f84d4",
     "disabled_bg": "#d4d4d4",
     "disabled_text": "#888888",
-    "status": "#555555",
-    "input_text": "#202020",
+    "status": "#626262",
+    "input_text": "#222222",
     "selected": "#dddddd",
 }
 
@@ -515,7 +501,7 @@ def _system_base_pt() -> float:
 def _apply_styled_sheet(
     app: QApplication, font_family: str | None, c: dict[str, str],
 ) -> None:
-    base_pt = _system_base_pt() * _UI_SCALE
+    base_pt = 10.5 * _UI_SCALE
 
     def px(value: float) -> int:
         return max(1, round(value * _UI_SCALE))
@@ -563,12 +549,15 @@ def _apply_styled_sheet(
         QPushButton:hover {{
             background-color: {c["hover"]};
         }}
+        QPushButton:focus, QLineEdit:focus, QSpinBox:focus {{
+            border: 2px solid #508fdb;
+        }}
         QPushButton:pressed {{
             background-color: {c["pressed"]};
         }}
         QPushButton#processBtn {{
-            background-color: {c["highlight"]};
-            color: {c["highlight_text"]};
+            background-color: #2768ad;
+            color: #ffffff;
             font-weight: 600;
             padding: {px(10)}px {px(32)}px;
             border-radius: 6px;
@@ -582,7 +571,7 @@ def _apply_styled_sheet(
             border: none;
         }}
         QPushButton#processBtn:hover:!disabled {{
-            background-color: {c["highlight_hover"]};
+            background-color: #2f6db1;
         }}
         QPushButton#colorSwatch {{
             border-radius: 4px;
@@ -710,11 +699,11 @@ def _apply_styled_sheet(
         QPushButton#toolbarBtn {{
             background-color: transparent;
             border: 1px solid {c["border"]};
-            border-radius: 4px;
-            padding: {px(4)}px {px(12)}px;
+            border-radius: 6px;
+            padding: {px(9)}px {px(13)}px;
             color: {c["text"]};
             min-height: {px(24)}px;
-            font-size: {base_pt * 0.95:.1f}pt;
+            font-size: {base_pt:.1f}pt;
         }}
         QPushButton#toolbarBtn:hover {{
             background-color: {c["hover"]};

@@ -26,21 +26,22 @@ def test_draft_guard_rejects_unreviewed_release(mutation):
         validate_draft(release, 'rc', 'a'*40)
 
 
-def test_public_repository_rejected(monkeypatch):
-    monkeypatch.setattr('release.api', lambda _: {'private': False})
-    with pytest.raises(ValueError, match='private'):
+def test_unexpected_repository_rejected(monkeypatch):
+    monkeypatch.setattr('release.api', lambda _: {'full_name': 'someone/else'})
+    with pytest.raises(ValueError, match='Studio release repository'):
         verify_remote_tag('tag', 'a'*40)
 
 
 def test_moved_tag_rejected(monkeypatch):
-    values = iter([{'private': True}, {'sha': 'a'*40}, {'object': {'type': 'commit', 'sha': 'b'*40}}])
+    values = iter([{'full_name': 'steadystatestudio/square-photo-padder-releases'},
+                   {'sha': 'a'*40}, {'object': {'type': 'commit', 'sha': 'b'*40}}])
     monkeypatch.setattr('release.api', lambda _: next(values))
     with pytest.raises(ValueError, match='different commit'):
         verify_remote_tag('tag', 'a'*40)
 
 
 def test_absent_draft_tag_allowed_but_other_errors_not(monkeypatch):
-    values = iter([{'private': True}, {'sha': 'a'*40}])
+    values = iter([{'full_name': 'steadystatestudio/square-photo-padder-releases'}, {'sha': 'a'*40}])
     def fake(path):
         if '/git/ref/' in path:
             raise subprocess.CalledProcessError(1, ['gh'], stderr='HTTP 404: Not Found')
@@ -89,8 +90,8 @@ def test_distribution_tag_identifies_exact_source(monkeypatch):
     def fake_git(*args):
         return 'b'*40 if args[-1] == 'HEAD^{tree}' else 'a'*40
     monkeypatch.setattr('release.git', fake_git)
-    assert validate_candidate('v1.1.2', 'a'*40) == 'b'*40
+    assert validate_candidate('v1.2.0', 'a'*40) == 'b'*40
     with pytest.raises(ValueError):
         validate_candidate('v1.1.1', 'a'*40)
     with pytest.raises(ValueError):
-        validate_candidate('v1.1.2', 'c'*40)
+        validate_candidate('v1.2.0', 'c'*40)

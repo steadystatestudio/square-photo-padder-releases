@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "square-photo-padder"
-version = "1.1.2"
+version = "1.2.0"
 description = "Desktop app for padding photos to square images without cropping anything out."
 readme = "README.md"
 license = {text = "MIT"}

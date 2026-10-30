@@ -1,3 +1,16 @@
+# Changelog
+
+## 1.2.0
+
+- Align the Studio toolbar, labeled Settings action, spacing and light/dark colors with File Renamer.
+- Keep Process All centered, Save Photo separate, and progress visible in its own read-only bar.
+- Add a dedicated Add Folder action and make long status details available on hover.
+- Improve selected-control and primary-action contrast.
+- Correct marketplace guidance: square padding is not a compliance preset for eBay or Poshmark.
+- Require a fresh folder for synthetic package diagnostics.
+- Isolate Windows package builds from unrelated tools on the host DLL search path.
+- Stage releases only through an explicit reviewed-commit dispatch, with existing-tag and published-release checks.
+
 ## 1.1.2
 
 - Preserve transparency over the chosen background and normalize embedded color profiles.
@@ -5,8 +18,6 @@
 - Reject remote drops, keep repeat-overwrite rotations consistent, and fix zero-ink watermarks.
 - Keep the familiar preview and controls; correct displayed version.
 - Retain license/source/provenance evidence with unsigned Windows/Linux packages.
-
-# Changelog
 
 ## 1.1.1
 

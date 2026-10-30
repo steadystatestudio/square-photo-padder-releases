@@ -6,6 +6,19 @@ from pathlib import Path
 
 
 def run(directory: str) -> int:
+    """Refuse existing destinations so diagnostics cannot replace user files."""
+    import traceback
+
+    root = Path(directory).resolve()
+    root.mkdir(parents=True, exist_ok=False)
+    try:
+        return _run(str(root))
+    except Exception:
+        (root / "error.txt").write_text(traceback.format_exc(), encoding="utf-8")
+        raise
+
+
+def _run(directory: str) -> int:
     from PIL import Image, ImageCms
     from PySide6.QtCore import QSettings
     from PySide6.QtWidgets import QApplication

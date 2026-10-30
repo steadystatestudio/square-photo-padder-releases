@@ -2,7 +2,7 @@ from __future__ import annotations
 
 APP_ORGANIZATION = "Steady State Studio"
 APP_NAME = "Square Photo Padder"
-APP_VERSION = "1.1.2"
+APP_VERSION = "1.2.0"
 WINDOW_TITLE = "Square Photo Padder"
 OUTPUT_EXTENSION = ".jpg"
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}

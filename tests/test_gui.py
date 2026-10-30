@@ -969,8 +969,8 @@ def test_toolbar_button_highlights_while_busy(tmp_path: Path) -> None:
     assert window.help_btn.property("busy") is False
 
 
-def test_help_recommends_sizes_per_marketplace(tmp_path: Path) -> None:
-    """Help explains which size to pick for eBay, Amazon, OfferUp, etc."""
+def test_help_explains_sizes_and_destination_limits(tmp_path: Path) -> None:
+    """The size controls explain their scope without promising listing compliance."""
     _configure_settings(tmp_path)
     _app()
     window = MainWindow()
@@ -979,8 +979,9 @@ def test_help_recommends_sizes_per_marketplace(tmp_path: Path) -> None:
         window._show_help()
 
     text = mock_info.call_args[0][2]
-    for marketplace in ("eBay", "Amazon", "OfferUp", "Etsy", "Instagram"):
-        assert marketplace in text
+    assert "not marketplace compliance presets" in text
+    assert "eBay</b> disallows added borders, text and watermarks" in text
+    assert "3:4 portrait cover photos" in text
     for size in ("2048", "1600", "1080", "1000"):
         assert size in text
 

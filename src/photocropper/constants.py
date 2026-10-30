@@ -7,8 +7,7 @@ WINDOW_TITLE = "Square Photo Padder"
 OUTPUT_EXTENSION = ".jpg"
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 DEFAULT_BACKGROUND_COLOR = (0, 0, 0)
-# Marketplace-standard square sizes: Amazon zoom minimum (1000), Instagram (1080),
-# eBay/Amazon recommended (1600), Shopify (2048).
+# Common square output sizes; destination rules vary and are not certified by a preset.
 RESIZE_PRESET_SIZES = [1000, 1080, 1600, 2048]
 RESIZE_MODE_ORIGINAL = "original"
 RESIZE_MODE_CUSTOM = "custom"

@@ -1,0 +1,8 @@
+name: Build testing packages
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-and-package:
+    uses: ./.github/workflows/test.yml

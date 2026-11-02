@@ -1,0 +1,62 @@
+# Virtual environments
+.venv/
+.venv-linux/
+.venv-appimage/
+venv/
+
+# Build output
+build/
+dist/
+*.spec.bak
+*.AppImage
+
+# Python packaging
+src/*.egg-info/
+*.egg-info/
+
+# Byte-compiled / cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Pytest
+.pytest_cache/
+.pytest_cache_local/
+pytest-cache-files-*/
+pytest-temp/
+pytest-temp-run/
+
+# Ruff
+.ruff_cache/
+
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
+
+# Logs
+*.log
+
+# Temp
+.tmp/
+tmp*/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Claude
+.claude/
+CLAUDE.md
+plan.md
+
+# Isolated test reports and screenshots
+artifacts/
+
+_reference/
+candidate/

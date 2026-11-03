@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.3
+## 1.2.4
 
 - Use the operating system UI font family and configured text size, including Linux Mint Cinnamon and Ubuntu GNOME desktop settings. Reopen the app after changing desktop font settings.
 - Keep text at that size when the window is narrow. Toolbar controls wrap and configuration scrolls instead of shrinking the font.

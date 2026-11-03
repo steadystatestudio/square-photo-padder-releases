@@ -1,13 +1,13 @@
 # Release preparation
 
-Square Photo Padder 1.2.3 follows the desktop UI font and text-size settings.
+Square Photo Padder 1.2.4 follows the desktop UI font and text-size settings.
 At narrow widths, controls wrap and the work area scrolls without shrinking text.
 Reopen the app after changing desktop font settings. Inspect normal and enlarged
 fonts in the exact Windows and Linux packages, including Linux Mint Cinnamon.
 Check toolbar actions, settings, dialogs, persistent status and actual saved output.
 
 Run **Build release** from `.github/workflows/build-release.yml` on `main`, with
-the exact 40-character commit and `v1.2.3`. The workflow supports the canonical
+the exact 40-character commit and `v1.2.4`. The workflow supports the canonical
 `steadystatestudio/square-photo-padder-releases` source repository and the private
 `steadystatestudio/square-photo-padder-builds` build repository. A different
 commit, branch, repository, moved tag or published release is rejected. The

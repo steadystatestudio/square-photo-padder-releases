@@ -4,7 +4,7 @@ from PySide6.QtCore import QEvent, QObject
 from PySide6.QtGui import QColor, QFontInfo, QPalette
 from PySide6.QtWidgets import QApplication
 
-from photocropper.system_fonts import apply_system_font
+from photocropper.system_fonts import apply_system_font, system_font_css
 
 
 def _is_system_dark_mode() -> bool:
@@ -432,6 +432,7 @@ def _apply_styled_sheet(app: QApplication, c: dict[str, str]) -> None:
     app.setStyleSheet(f"""
         /* --- Base --- */
         QWidget {{
+            {system_font_css(app)}
             color: {c["text"]};
         }}
         QMainWindow {{

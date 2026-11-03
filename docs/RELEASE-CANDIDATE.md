@@ -1,14 +1,13 @@
 # Release preparation
 
-Square Photo Padder 1.2.2 keeps task actions, progress and status visible on short
-desktops while the preview and settings scroll as needed. Check ordinary and
-restored windows using the exact packages. Source tests alone do not establish
-native layout. Watermark checks should include a 60px photo with "TEST" and a
-200px downsize; text that cannot fit must produce an error without saving a
-clipped output.
+Square Photo Padder 1.2.3 follows the desktop UI font and text-size settings.
+At narrow widths, controls wrap and the work area scrolls without shrinking text.
+Reopen the app after changing desktop font settings. Inspect normal and enlarged
+fonts in the exact Windows and Linux packages, including Linux Mint Cinnamon.
+Check toolbar actions, settings, dialogs, persistent status and actual saved output.
 
 Run **Build release** from `.github/workflows/build-release.yml` on `main`, with
-the exact 40-character commit and `v1.2.2`. The workflow supports the canonical
+the exact 40-character commit and `v1.2.3`. The workflow supports the canonical
 `steadystatestudio/square-photo-padder-releases` source repository and the private
 `steadystatestudio/square-photo-padder-builds` build repository. A different
 commit, branch, repository, moved tag or published release is rejected. The

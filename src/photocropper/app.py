@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
@@ -49,10 +48,6 @@ def main() -> int:
             _isolate_qa_settings(sys.argv[2])
         except (OSError, ValueError):
             return 2
-
-    # Enable GTK theme detection on Linux (must be set before QApplication)
-    if sys.platform.startswith("linux") and "QT_QPA_PLATFORMTHEME" not in os.environ:
-        os.environ["QT_QPA_PLATFORMTHEME"] = "gtk3"
 
     if sys.platform == "win32":
         # Give the process its own taskbar identity so the window icon is

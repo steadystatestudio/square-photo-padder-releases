@@ -35,6 +35,17 @@ def _run(directory: str) -> int:
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(APP_ORGANIZATION)
     app.setStyle("Fusion")
+    # The Windows offscreen test platform can omit the desktop font catalog.
+    # Register its installed font for diagnostic screenshots only; normal app
+    # launches always use the operating system's own font selection.
+    import os
+
+    from PySide6.QtGui import QFontDatabase
+    if os.name == "nt" and app.platformName() == "offscreen":
+        for name in ("segoeui.ttf", "seguisb.ttf"):
+            path = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts" / name
+            if path.is_file():
+                QFontDatabase.addApplicationFont(str(path))
     apply_theme(app)
     source = root / "sample.png"
     Image.new("RGB", (60, 40), "red").save(source)

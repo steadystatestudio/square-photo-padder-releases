@@ -1,64 +1,10 @@
 from __future__ import annotations
 
-import os
-from pathlib import Path
-
 from PySide6.QtCore import QEvent, QObject
-from PySide6.QtGui import QColor, QFont, QFontDatabase, QPalette
+from PySide6.QtGui import QColor, QFontInfo, QPalette
 from PySide6.QtWidgets import QApplication
 
-
-def _pick_best_font() -> str | None:
-    preferred = [
-        "Segoe UI",
-        "Noto Sans",
-        "DejaVu Sans",
-        "Liberation Sans",
-        "Cantarell",
-        "Ubuntu",
-        "Droid Sans",
-    ]
-    available = set(QFontDatabase.families())
-    for name in preferred:
-        if name in available:
-            return name
-
-    # Windows offscreen Qt can omit installed fonts from the family catalog.
-    if os.name == "nt":
-        source = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts/segoeui.ttf"
-        if source.is_file():
-            font_id = QFontDatabase.addApplicationFont(str(source))
-            if font_id >= 0:
-                families = QFontDatabase.applicationFontFamilies(font_id)
-                if families:
-                    return families[0]
-
-    # Fallback: scan common Linux font directories and register the first match
-    search_dirs = [
-        "/usr/share/fonts",
-        "/usr/local/share/fonts",
-        str(Path.home() / ".local/share/fonts"),
-        str(Path.home() / ".fonts"),
-    ]
-    candidates = [
-        "DejaVuSans.ttf",
-        "NotoSans-Regular.ttf",
-        "LiberationSans-Regular.ttf",
-        "FreeSans.ttf",
-    ]
-    for directory in search_dirs:
-        base = Path(directory)
-        if not base.exists():
-            continue
-        for candidate in candidates:
-            for match in base.rglob(candidate):
-                font_id = QFontDatabase.addApplicationFont(str(match))
-                if font_id >= 0:
-                    families = QFontDatabase.applicationFontFamilies(font_id)
-                    if families:
-                        return families[0]
-
-    return None
+from photocropper.system_fonts import apply_system_font
 
 
 def _is_system_dark_mode() -> bool:
@@ -347,10 +293,8 @@ def _apply_gtk_palette(app: QApplication, scheme: dict[str, str]) -> None:
 # Module-level dict populated by apply_theme() for gui.py to read
 active_colors: dict[str, str] = {}
 
-# Fit-to-width UI scale. 1.0 = native size; gui.py lowers it when the window
-# is narrower than the widest control row (e.g. large system fonts on Linux).
+# Spacing scale only. Text always retains the operating system UI font.
 _UI_SCALE = 1.0
-_ACTIVE_FONT_FAMILY: str | None = None
 
 
 def ui_scale() -> float:
@@ -358,11 +302,11 @@ def ui_scale() -> float:
 
 
 def set_ui_scale(app: QApplication, scale: float) -> None:
-    """Re-apply the stylesheet with fonts and control paddings scaled."""
+    """Re-apply spacing without shrinking the operating system font."""
     global _UI_SCALE
-    _UI_SCALE = scale
+    _UI_SCALE = max(1.0, scale)
     if active_colors:
-        _apply_styled_sheet(app, _ACTIVE_FONT_FAMILY, active_colors)
+        _apply_styled_sheet(app, active_colors)
 
 
 class _SystemThemeWatcher(QObject):
@@ -419,9 +363,7 @@ def _apply_theme(app: QApplication) -> None:
 
     from photocropper.settings import load_appearance
 
-    global _ACTIVE_FONT_FAMILY
-    font_family = _pick_best_font()
-    _ACTIVE_FONT_FAMILY = font_family
+    apply_system_font(app)
     app.setStyleSheet("")
     appearance = os.environ.get("SPP_THEME", "").lower()
     if appearance not in {"dark", "light"}:
@@ -432,7 +374,7 @@ def _apply_theme(app: QApplication) -> None:
     scheme = _D if dark else _L
     active_colors.update(scheme)
     _apply_gtk_palette(app, scheme)
-    _apply_styled_sheet(app, font_family, scheme)
+    _apply_styled_sheet(app, scheme)
 
 
 
@@ -481,43 +423,15 @@ _L = {
 }
 
 
-# System base font size, captured once before the app font is touched so text
-# follows the OS text-size / scaling setting.
-_BASE_PT: float | None = None
-
-
-def _system_base_pt() -> float:
-    global _BASE_PT
-    if _BASE_PT is None:
-        from PySide6.QtGui import QFontInfo
-
-        size = QApplication.font().pointSizeF()
-        if size <= 0:  # pixel-sized system font
-            size = QFontInfo(QApplication.font()).pointSizeF()
-        _BASE_PT = size if size > 0 else 10.0
-    return _BASE_PT
-
-
-def _apply_styled_sheet(
-    app: QApplication, font_family: str | None, c: dict[str, str],
-) -> None:
-    base_pt = 10.5 * _UI_SCALE
+def _apply_styled_sheet(app: QApplication, c: dict[str, str]) -> None:
+    base_pt = QFontInfo(app.font()).pointSizeF()
 
     def px(value: float) -> int:
         return max(1, round(value * _UI_SCALE))
 
-    font = QFont(app.font())
-    if font_family:
-        font.setFamily(font_family)
-    font.setPointSizeF(base_pt)
-    app.setFont(font)
-
-    font_decl = f'font-family: "{font_family}";' if font_family else ""
-
     app.setStyleSheet(f"""
         /* --- Base --- */
         QWidget {{
-            {font_decl}
             color: {c["text"]};
         }}
         QMainWindow {{
@@ -703,7 +617,6 @@ def _apply_styled_sheet(
             padding: {px(9)}px {px(13)}px;
             color: {c["text"]};
             min-height: {px(24)}px;
-            font-size: {base_pt:.1f}pt;
         }}
         QPushButton#toolbarBtn:hover {{
             background-color: {c["hover"]};

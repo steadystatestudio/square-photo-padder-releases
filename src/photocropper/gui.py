@@ -57,6 +57,7 @@ from photocropper.constants import (
     WINDOW_TITLE,
 )
 from photocropper.dialogs import FileFolderDialog, SettingsDialog
+from photocropper.flow_layout import FlowLayout
 from photocropper.icons import (
     make_position_icon,
     make_rotate_icon,
@@ -85,7 +86,7 @@ from photocropper.settings import (
     save_resize_preference,
     save_tooltips_enabled,
 )
-from photocropper.themes import active_colors, apply_theme, set_ui_scale, ui_scale
+from photocropper.themes import active_colors, apply_theme, ui_scale
 
 INITIAL_STATUS = "Click Add Photos or drag images or folders here."
 
@@ -249,11 +250,6 @@ class MainWindow(QMainWindow):
         self._save_timer.setInterval(300)
         self._save_timer.timeout.connect(self._save_processing_preference)
 
-        self._scale_timer = QTimer(self)
-        self._scale_timer.setSingleShot(True)
-        self._scale_timer.setInterval(120)
-        self._scale_timer.timeout.connect(self._fit_ui_scale)
-
         self._processing = False
         self._cancel_requested = False
         self._close_when_finished = False
@@ -263,7 +259,7 @@ class MainWindow(QMainWindow):
         self._close_timer.timeout.connect(self.close)
 
         # --- Toolbar row ---
-        toolbar_layout = QHBoxLayout()
+        toolbar_layout = FlowLayout()
         toolbar_layout.setContentsMargins(0, 0, 0, 0)
         toolbar_layout.setSpacing(6)
 
@@ -338,7 +334,7 @@ class MainWindow(QMainWindow):
         # Keep a stable metadata row while browsing.
         self.preview_counter = QLabel("")
         self.preview_counter.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.preview_counter.setFixedHeight(self.preview_counter.fontMetrics().height() + 4)
+        self.preview_counter.setMinimumHeight(self.preview_counter.sizeHint().height() + 4)
         self._set_tooltip(self.preview_counter, "Up/Down arrows browse photos")
 
         self.filename_label = FilenameLabel()
@@ -376,7 +372,7 @@ class MainWindow(QMainWindow):
         # Right-aligned digits in a fixed box: numbers enter at the right
         # edge and fill leftward as you type (tester feedback).
         self.custom_size_spin.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.custom_size_spin.setFixedWidth(90)
+        self.custom_size_spin.setMinimumWidth(self.custom_size_spin.sizeHint().width())
         self.custom_size_spin.valueChanged.connect(self._custom_size_changed)
         self.custom_size_spin.editingFinished.connect(self._custom_size_committed)
         self._set_tooltip(self.custom_size_spin, "Custom square size in pixels")
@@ -513,7 +509,7 @@ class MainWindow(QMainWindow):
         # Fixed one-line footprint so the preview never jumps, and
         # long messages clip instead of stretching the window wider.
         self.status_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
-        self.status_label.setFixedHeight(self.status_label.fontMetrics().height() + 8)
+        self.status_label.setMinimumHeight(self.status_label.sizeHint().height() + 8)
 
         # The preview and settings can scroll on a short desktop. Task actions
         # and their permanent result stay outside this area, at normal font size.
@@ -539,7 +535,6 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.work_scroll, stretch=1)
         save_row = QHBoxLayout()
         left_balance = QWidget()
-        left_balance.setMinimumWidth(self.save_photo_btn.sizeHint().width())
         save_row.addWidget(left_balance, 1)
         save_row.addWidget(self.process_btn)
         right_actions = QHBoxLayout()
@@ -1160,7 +1155,6 @@ class MainWindow(QMainWindow):
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
-        self._scale_timer.start()
         if self._preview_path is not None:
             self._preview_timer.start()
 
@@ -1194,31 +1188,6 @@ class MainWindow(QMainWindow):
         except (OSError, ValueError, Image.DecompressionBombError):
             pass
         self.metadata_label.setText(f"{dimensions} · {image_format} · {file_size}")
-
-    # --- Fit-to-width UI scaling ---
-
-    _SCALE_MIN = 0.5
-
-    def _fit_ui_scale(self) -> None:
-        """Shrink fonts and control paddings so the widest row fits the
-        window width (large system fonts on Linux otherwise clip button
-        text); restore toward native size when the window widens again."""
-        margins = self.container.layout().contentsMargins()
-        needed = max(self.container.layout().minimumSize().width(),
-                     self.work_widget.layout().minimumSize().width() + margins.left() + margins.right())
-        available = self.container.width()
-        if needed <= 0 or available <= 0:
-            return
-        current = ui_scale()
-        target = max(self._SCALE_MIN, min(1.0, current * available / needed))
-        if abs(target - current) < 0.02:
-            return
-        set_ui_scale(QApplication.instance(), target)
-        self.custom_size_spin.setFixedWidth(round(90 * target))
-        self._rebuild_icons()
-        self._update_color_swatch()
-        # Layout metrics settle after restyling; re-check until converged.
-        self._scale_timer.start()
 
     def _update_preview_counter(self) -> None:
         total = len(self._preview_paths)

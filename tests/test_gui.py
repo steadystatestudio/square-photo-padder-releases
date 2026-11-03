@@ -47,7 +47,7 @@ def test_compact_window_keeps_task_actions_progress_and_status_visible(tmp_path:
     QTest.qWait(300)
     assert window.width() <= width
     assert window.height() <= height
-    assert app.font().pointSizeF() >= 10
+    assert app.font().pointSizeF() > 0
     for widget in (window.process_btn, window.save_photo_btn, window.progress_bar, window.status_label):
         top = widget.mapTo(window, widget.rect().topLeft())
         bottom = widget.mapTo(window, widget.rect().bottomRight())
@@ -71,7 +71,7 @@ def test_short_window_settings_scroll_without_moving_task_footer(tmp_path: Path)
     assert viewport.rect().contains(window.watermark_input.mapTo(viewport, QPoint(0, 0)))
     assert viewport.rect().contains(window.watermark_input.mapTo(viewport, window.watermark_input.rect().bottomRight()))
     assert [widget.mapTo(window, QPoint(0, 0)) for widget in footer] == positions
-    assert app.font().pointSizeF() >= 10
+    assert app.font().pointSizeF() > 0
 
 
 @pytest.mark.parametrize("width,height", [(959, 704), (800, 600)])
@@ -1498,71 +1498,39 @@ def test_progress_track_groups_huge_batches(tmp_path: Path) -> None:
 # --- v1.4.3 fit-to-width UI scaling ---
 
 
-def test_set_ui_scale_scales_font_and_paddings(tmp_path: Path) -> None:
-    from photocropper.themes import set_ui_scale, ui_scale
+@pytest.mark.parametrize("points", [11, 16, 20])
+def test_system_font_is_preserved_in_compact_layout_and_themes(tmp_path, points):
+    from PySide6.QtGui import QFont
 
-    app = _app()
-    set_ui_scale(app, 1.0)
-    full_pt = app.font().pointSizeF()
-    full_sheet = app.styleSheet()
-
-    set_ui_scale(app, 0.7)
-    try:
-        assert ui_scale() == 0.7
-        assert app.font().pointSizeF() < full_pt
-        assert app.styleSheet() != full_sheet
-    finally:
-        set_ui_scale(app, 1.0)
-    assert app.font().pointSizeF() == full_pt
-
-
-def test_ui_scale_shrinks_when_window_too_narrow(tmp_path: Path) -> None:
-    from photocropper.themes import set_ui_scale, ui_scale
-
+    from photocropper.themes import set_ui_scale
     _configure_settings(tmp_path)
     app = _app()
-    set_ui_scale(app, 1.0)
-    window = MainWindow()
+    original = QFont(app.font())
+    font = QFont(original)
+    font.setPointSizeF(points)
+    app.setFont(font)
     try:
-        needed = window.container.layout().minimumSize().width()
-        assert needed > 0
-        window.setMinimumSize(0, 0)
-        window.container.resize(needed // 2, 560)
-        window._fit_ui_scale()
-        assert window._SCALE_MIN <= ui_scale() < 1.0
+        apply_theme(app)
+        window = MainWindow()
+        window.show()
+        window.resize(800, 600)
+        QTest.qWait(300)
+        set_ui_scale(app, 0.5)
+        assert app.font() == font
+        assert window.width() <= 800 and window.height() <= 600
+        for button in (window.add_btn, window.help_btn, window.process_btn, window.save_photo_btn):
+            assert button.font().pointSizeF() >= points
+            assert button.rect().height() >= button.fontMetrics().height()
+            assert window.rect().contains(button.mapTo(window, button.rect().bottomRight()))
+        for button in window._resize_buttons:
+            window.work_scroll.ensureWidgetVisible(button)
+            app.processEvents()
+            view = window.work_scroll.viewport()
+            assert view.rect().contains(button.mapTo(view, button.rect().center()))
+        window.close()
     finally:
-        set_ui_scale(app, 1.0)
-
-
-def test_ui_scale_restores_when_window_is_wide(tmp_path: Path) -> None:
-    from photocropper.themes import set_ui_scale, ui_scale
-
-    _configure_settings(tmp_path)
-    app = _app()
-    set_ui_scale(app, 0.7)
-    window = MainWindow()
-    try:
-        needed = window.container.layout().minimumSize().width()
-        window.container.resize(needed * 3, 560)
-        window._fit_ui_scale()
-        assert ui_scale() == 1.0
-    finally:
-        set_ui_scale(app, 1.0)
-
-
-def test_ui_scale_noop_at_native_size_in_wide_window(tmp_path: Path) -> None:
-    from photocropper.themes import set_ui_scale, ui_scale
-
-    _configure_settings(tmp_path)
-    app = _app()
-    set_ui_scale(app, 1.0)
-    window = MainWindow()
-    sheet_before = app.styleSheet()
-    needed = window.container.layout().minimumSize().width()
-    window.container.resize(needed * 2, 560)
-    window._fit_ui_scale()
-    assert ui_scale() == 1.0
-    assert app.styleSheet() == sheet_before
+        app.setFont(original)
+        apply_theme(app)
 
 
 def test_file_folder_dialog_allows_extended_selection(tmp_path: Path) -> None:

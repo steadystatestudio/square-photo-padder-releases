@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.3
+
+- Use the operating system UI font family and configured text size, including Linux Mint Cinnamon and Ubuntu GNOME desktop settings. Reopen the app after changing desktop font settings.
+- Keep text at that size when the window is narrow. Toolbar controls wrap and configuration scrolls instead of shrinking the font.
+- Preserve the chosen desktop font when switching Light, Dark or System appearance.
+
 ## 1.2.2
 
 - Keep Save Photo, Process All, progress and the permanent status visible on short desktops. The photo preview and settings scroll when needed without shrinking text to fit the screen height.

@@ -552,6 +552,8 @@ class MainWindow(QMainWindow):
         self.container.setLayout(layout)
         self.setCentralWidget(self.container)
 
+        from .window_size import WindowSizeGuard
+        self.window_size_guard = WindowSizeGuard(self, (560, 700), self.work_scroll)
         self._restore_resize_preference()
         self._restore_processing_preference()
         had_saved_geometry = _settings().value("window/geometry") is not None

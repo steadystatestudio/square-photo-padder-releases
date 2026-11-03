@@ -37,11 +37,14 @@ def _configure_settings(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("width,height", [(959, 704), (800, 600)])
-def test_compact_window_keeps_task_actions_progress_and_status_visible(tmp_path: Path, width, height) -> None:
+def test_compact_window_keeps_task_actions_progress_and_status_visible(
+    tmp_path: Path, width, height, monkeypatch,
+) -> None:
     """A short desktop must not push the permanent result below the screen."""
     _configure_settings(tmp_path)
     app = _app()
     window = MainWindow()
+    _use_test_screen(window, monkeypatch, width, height)
     window.show()
     window.resize(width, height)
     QTest.qWait(300)
@@ -54,10 +57,11 @@ def test_compact_window_keeps_task_actions_progress_and_status_visible(tmp_path:
         assert top.y() >= 0 and bottom.y() < height
 
 
-def test_short_window_settings_scroll_without_moving_task_footer(tmp_path: Path) -> None:
+def test_short_window_settings_scroll_without_moving_task_footer(tmp_path: Path, monkeypatch) -> None:
     _configure_settings(tmp_path)
     app = _app()
     window = MainWindow()
+    _use_test_screen(window, monkeypatch, 800, 600)
     window.show()
     window.resize(800, 600)
     QTest.qWait(300)
@@ -944,10 +948,11 @@ def test_preview_shows_empty_state_hint(tmp_path: Path) -> None:
     assert "add photos" in text
 
 
-def test_viewport_grows_as_centered_square(tmp_path: Path) -> None:
+def test_viewport_grows_as_centered_square(tmp_path: Path, monkeypatch) -> None:
     _configure_settings(tmp_path)
     _app()
     window = MainWindow()
+    _use_test_screen(window, monkeypatch, 3440, 1392)
     _activate(window)
     window.resize(650, 850)
     QApplication.processEvents()
@@ -1499,7 +1504,7 @@ def test_progress_track_groups_huge_batches(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("points", [11, 16, 20])
-def test_system_font_is_preserved_in_compact_layout_and_themes(tmp_path, points):
+def test_system_font_is_preserved_in_compact_layout_and_themes(tmp_path, points, monkeypatch):
     from PySide6.QtGui import QFont
 
     from photocropper.themes import set_ui_scale
@@ -1512,6 +1517,7 @@ def test_system_font_is_preserved_in_compact_layout_and_themes(tmp_path, points)
     try:
         apply_theme(app)
         window = MainWindow()
+        _use_test_screen(window, monkeypatch, 800, 600)
         window.show()
         window.resize(800, 600)
         QTest.qWait(300)
@@ -2062,3 +2068,15 @@ def test_preview_error_falls_back_to_exception_type_when_message_empty(tmp_path:
     with patch("photocropper.gui.generate_preview", side_effect=MemoryError()):
         window._open_paths([source])
     assert window.preview_label.text() == "Preview unavailable (MemoryError)"
+
+
+def _use_test_screen(window, monkeypatch, width, height):
+    """Model a monitor work area, rather than requesting an undersized window."""
+    from types import SimpleNamespace
+
+    from PySide6.QtCore import QRect
+    screen = window.screen()
+    replacement = SimpleNamespace(availableGeometry=lambda: QRect(0, 0, width, height),
+                                  availableGeometryChanged=screen.availableGeometryChanged)
+    monkeypatch.setattr(window, "screen", lambda: replacement)
+    window.window_size_guard.update()

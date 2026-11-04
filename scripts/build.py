@@ -8,8 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from build_appearance_probe import build as build_appearance_probe, stage_probe
-
+from build_appearance_probe import build as build_appearance_probe
+from build_appearance_probe import stage_probe
 from build_environment import pyinstaller_environment
 from build_manifest import write_manifest
 from packaging_notices import copy_notices, verify_qt_subset

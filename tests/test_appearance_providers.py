@@ -10,6 +10,7 @@ from PySide6.QtGui import QColor, QFont, QPalette
 
 from photocropper import appearance
 
+
 @pytest.fixture(scope="session")
 def app():
     from PySide6.QtWidgets import QApplication

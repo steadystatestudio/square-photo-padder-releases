@@ -85,7 +85,7 @@ By default originals are never modified — outputs get collision-safe names. En
 
 Open **Settings** in the top-right toolbar to choose **System**, **Dark**, or **Light** appearance
 and whether to show tooltips. Click **Save** to apply changes or **Cancel** to discard them.
-System appearance automatically matches your OS theme.
+System appearance uses available desktop settings. You can select a custom font/size or accent, Refresh system settings, or Reset appearance to System. Basic Linux matching requires no system Python or PyGObject; unavailable integration falls back to readable defaults.
 
 The `SPP_THEME` environment variable overrides the appearance setting:
 

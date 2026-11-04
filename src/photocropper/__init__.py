@@ -2,4 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["app", "constants", "gui", "processor"]
+__all__ = ["__version__", "app", "constants", "gui", "processor"]
+
+from .constants import APP_VERSION as __version__

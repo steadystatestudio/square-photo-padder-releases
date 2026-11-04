@@ -23,7 +23,6 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
-    QCheckBox,
     QDialog,
     QFileDialog,
     QFrame,
@@ -42,6 +41,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from photocropper.appearance import configure_appearance
 from photocropper.color_picker import BackgroundColorDialog
 from photocropper.constants import (
     APP_NAME,
@@ -80,13 +80,14 @@ from photocropper.settings import (
     load_processing_preference,
     load_resize_preference,
     load_tooltips_enabled,
-    save_appearance,
     save_custom_size,
     save_processing_preference,
     save_resize_preference,
     save_tooltips_enabled,
 )
 from photocropper.themes import active_colors, apply_theme, ui_scale
+
+from .choice_buttons import AccentCheckBox
 
 INITIAL_STATUS = "Click Add Photos or drag images or folders here."
 
@@ -219,6 +220,9 @@ def _make_seg_button(label: str, data: object) -> QPushButton:
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
+        self.appearance_settings = _settings()
+        configure_appearance(QApplication.instance(), self.appearance_settings, theme_key="ui/appearance")
+        apply_theme(QApplication.instance())
         self.setWindowTitle(WINDOW_TITLE)
         self.setAcceptDrops(True)
         self._background_color: tuple[int, int, int] = DEFAULT_BACKGROUND_COLOR
@@ -260,6 +264,7 @@ class MainWindow(QMainWindow):
 
         # --- Toolbar row ---
         toolbar_layout = FlowLayout()
+        self.toolbar_layout = toolbar_layout
         toolbar_layout.setContentsMargins(0, 0, 0, 0)
         toolbar_layout.setSpacing(6)
 
@@ -408,7 +413,7 @@ class MainWindow(QMainWindow):
         self.rotate_cw_btn.clicked.connect(lambda: self._rotate(90))
         self._set_tooltip(self.rotate_cw_btn, "Rotate right 90° (Right arrow)")
 
-        self.overwrite_check = QCheckBox("Overwrite")
+        self.overwrite_check = AccentCheckBox("Overwrite")
         # Indicator on the right of the label (tester feedback).
         self.overwrite_check.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self._set_tooltip(
@@ -553,12 +558,13 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.container)
 
         from .window_size import WindowSizeGuard
-        self.window_size_guard = WindowSizeGuard(self, (560, 700), self.work_scroll)
+        self.window_size_guard = WindowSizeGuard(self, (560, 640), self.work_scroll, self._preferred_row_width)
         self._restore_resize_preference()
         self._restore_processing_preference()
         had_saved_geometry = _settings().value("window/geometry") is not None
         self.resize(self.sizeHint())
         self._restore_geometry()
+        self.window_size_guard.update()
         self._fit_to_screen()
         self._rebuild_icons()
 
@@ -571,6 +577,11 @@ class MainWindow(QMainWindow):
         self.watermark_input.textChanged.connect(self._schedule_save_preference)
         for editor in (self.watermark_input, self.custom_size_spin, self.custom_size_spin.lineEdit()):
             editor.installEventFilter(self)
+
+    def _preferred_row_width(self) -> int:
+        widgets = [item.widget() for item in self.toolbar_layout._items if item.widget() is not None]
+        return (sum(widget.sizeHint().width() for widget in widgets)
+                + max(0, len(widgets) - 1) * self.toolbar_layout.spacing() + 32)
 
     def eventFilter(self, obj, event) -> bool:  # noqa: N802
         if event.type() == QEvent.Type.ShortcutOverride and event.key() in {
@@ -821,7 +832,8 @@ class MainWindow(QMainWindow):
             dialog = SettingsDialog(self, self._tooltips_enabled, load_appearance())
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 self._set_tooltips_enabled(dialog.tooltips_check.isChecked())
-                save_appearance(dialog.appearance.currentData())
+                dialog.controls.save_settings()
+                configure_appearance(QApplication.instance(), self.appearance_settings, theme_key="ui/appearance")
                 apply_theme(QApplication.instance())
                 self._rebuild_icons()
                 self._update_color_swatch()
@@ -1282,6 +1294,7 @@ class MainWindow(QMainWindow):
             self._fit_to_available_geometry(screen.availableGeometry())
 
     def _fit_to_available_geometry(self, available: QRect) -> None:
+        self.window_size_guard.update(available)
         if self.isMaximized() or self.isFullScreen():
             return
         frame = self.frameGeometry()
@@ -1302,6 +1315,10 @@ class MainWindow(QMainWindow):
         frame = self.frameGeometry()
         frame.moveCenter(available.center())
         self.move(frame.topLeft())
+        # Hidden windows can acquire their frame offset on the first move.
+        correction = available.center() - self.frameGeometry().center()
+        if not correction.isNull():
+            self.move(self.pos() + correction)
 
     def _restore_geometry(self) -> None:
         settings = _settings()

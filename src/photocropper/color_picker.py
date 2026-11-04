@@ -11,15 +11,17 @@ Windows and Linux.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QEvent, QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import (
     QDialog,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLayout,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -80,7 +82,7 @@ class _ShadeSquare(QWidget):
         self._sat = 0
         self._val = 255
         self.setCursor(Qt.CursorShape.CrossCursor)
-        self.setMinimumHeight(round(130 * ui_scale()))
+        self.setMinimumHeight(130)
 
     def set_color(self, color: QColor) -> None:
         hue, sat, val, _ = color.getHsv()
@@ -198,19 +200,18 @@ class BackgroundColorDialog(QDialog):
         self._selected: tuple[int, int, int] | None = None
         self._custom_colors: list[tuple[int, int, int]] = load_custom_colors()
         self._updating_hex = False
-        scale = ui_scale()
-        side = round(28 * scale)
+        side = max(24, min(40, self.fontMetrics().height() + 8))
 
         # Row of common colors — one click applies and closes.
         self._basic_swatches: list[_Swatch] = []
-        basics_row = QHBoxLayout()
+        basics_row = QGridLayout()
+        self._basics_layout = basics_row
         basics_row.setSpacing(4)
-        for color in BASIC_COLORS:
+        for index, color in enumerate(BASIC_COLORS):
             swatch = _Swatch(color, side)
             swatch.clicked.connect(lambda _=False, c=color: self._choose(c))
             self._basic_swatches.append(swatch)
-            basics_row.addWidget(swatch)
-        basics_row.addStretch()
+            basics_row.addWidget(swatch, 0, index)
 
         # Saved custom colors + the button that empties them. The whole row
         # hides when there is nothing saved.
@@ -220,7 +221,7 @@ class BackgroundColorDialog(QDialog):
         self.clear_colors_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.clear_colors_btn.clicked.connect(self._clear_custom_colors)
         self._custom_row = QWidget()
-        custom_layout = QHBoxLayout(self._custom_row)
+        custom_layout = QGridLayout(self._custom_row)
         custom_layout.setContentsMargins(0, 0, 0, 0)
         custom_layout.setSpacing(4)
         self._custom_layout = custom_layout
@@ -239,7 +240,7 @@ class BackgroundColorDialog(QDialog):
         self.hex_edit = QLineEdit()
         self.hex_edit.setPlaceholderText("#rrggbb")
         self.hex_edit.setMaxLength(7)
-        self.hex_edit.setFixedWidth(round(80 * scale))
+        self.hex_edit.setFixedWidth(self.hex_edit.fontMetrics().horizontalAdvance("#ffffff") + 24)
         self.hex_edit.textEdited.connect(self._hex_edited)
         self.hex_edit.returnPressed.connect(self._use_mixed_color)
         self.preview = QLabel()
@@ -248,26 +249,84 @@ class BackgroundColorDialog(QDialog):
         self.use_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.use_btn.setDefault(True)
         self.use_btn.clicked.connect(self._use_mixed_color)
-        mix_row = QHBoxLayout()
+        mix_row = QGridLayout()
+        self._mix_layout = mix_row
         mix_row.setSpacing(6)
-        mix_row.addWidget(self.hex_edit)
-        mix_row.addWidget(self.preview)
-        mix_row.addStretch()
-        mix_row.addWidget(self.use_btn)
+        mix_row.addWidget(self.hex_edit, 0, 0)
+        mix_row.addWidget(self.preview, 0, 1)
+        mix_row.setColumnStretch(2, 1)
+        mix_row.addWidget(self.use_btn, 0, 3)
 
-        layout = QVBoxLayout(self)
+        self._body = QWidget()
+        layout = QVBoxLayout(self._body)
         layout.setSpacing(8)
         layout.addLayout(basics_row)
         layout.addWidget(self._custom_row)
         layout.addLayout(picker_row)
         layout.addLayout(mix_row)
-        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
+        self._scroll = QScrollArea()
+        self._scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setWidget(self._body)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(self._scroll)
+        self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, False)
+        self.setSizeGripEnabled(False)
 
         self.shade_square.changed.connect(self._mix_changed)
         self.hue_strip.changed.connect(self.shade_square.set_hue)
 
         self.shade_square.set_color(QColor(*initial))
         self.hue_strip.set_hue(self.shade_square.hue())
+        self._fitting = False
+        QTimer.singleShot(0, self._fit_form)
+
+    def _fit_form(self) -> None:
+        if self._fitting:
+            return
+        self._fitting = True
+        try:
+            area = self.screen().availableGeometry()
+            cap_width, cap_height = max(1, area.width() - 48), max(1, area.height() - 80)
+            side = self._swatch_side
+            columns = max(1, min(12, (cap_width - 24) // (side + 4)))
+            for index, swatch in enumerate(self._basic_swatches):
+                self._basics_layout.addWidget(swatch, index // columns, index % columns)
+            for index, swatch in enumerate(self._custom_swatches):
+                self._custom_layout.addWidget(swatch, index // columns, index % columns)
+            self._custom_layout.addWidget(self.clear_colors_btn, (len(self._custom_swatches) + columns - 1) // columns,
+                                          0, 1, max(1, min(columns, 4)))
+            hex_width = self.hex_edit.fontMetrics().horizontalAdvance("#ffffff") + 24
+            self.hex_edit.setFixedWidth(min(hex_width, max(1, cap_width - 24)))
+            needed = hex_width + self.preview.width() + self.use_btn.sizeHint().width() + 3 * 6 + 24
+            self._mix_layout.removeWidget(self.use_btn)
+            if needed > cap_width:
+                self._mix_layout.addWidget(self.use_btn, 1, 0, 1, 4)
+            else:
+                self._mix_layout.addWidget(self.use_btn, 0, 3)
+            self._body.layout().activate()
+            wanted = self._body.layout().sizeHint()
+            overflow = wanted.height() > cap_height or wanted.width() > cap_width
+            self._scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded if overflow
+                                                     else Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded if overflow
+                                                       else Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            scrollbar = self.style().pixelMetric(self.style().PixelMetric.PM_ScrollBarExtent) if overflow else 0
+            self.setFixedSize(min(cap_width, wanted.width() + scrollbar), min(cap_height, wanted.height()))
+        finally:
+            self._fitting = False
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        self._fit_form()
+
+    def changeEvent(self, event) -> None:  # noqa: N802
+        super().changeEvent(event)
+        if event.type() in {QEvent.Type.FontChange, QEvent.Type.ApplicationFontChange, QEvent.Type.StyleChange}:
+            if hasattr(self, "_mix_layout"):
+                QTimer.singleShot(0, self._fit_form)
 
     # --- Result ---
 
@@ -319,11 +378,12 @@ class BackgroundColorDialog(QDialog):
             if widget is not None and widget is not self.clear_colors_btn:
                 widget.deleteLater()
         self._custom_swatches = []
-        for color in self._custom_colors:
+        for index, color in enumerate(self._custom_colors):
             swatch = _Swatch(color, self._swatch_side)
             swatch.clicked.connect(lambda _=False, c=color: self._choose(c))
             self._custom_swatches.append(swatch)
-            self._custom_layout.addWidget(swatch)
-        self._custom_layout.addStretch()
-        self._custom_layout.addWidget(self.clear_colors_btn)
+            self._custom_layout.addWidget(swatch, 0, index)
+        self._custom_layout.addWidget(self.clear_colors_btn, 1, 0)
         self._custom_row.setVisible(bool(self._custom_colors))
+        if hasattr(self, "_mix_layout"):
+            QTimer.singleShot(0, self._fit_form)

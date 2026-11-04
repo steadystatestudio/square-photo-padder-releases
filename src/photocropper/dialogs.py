@@ -6,18 +6,18 @@ from pathlib import Path
 
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QCheckBox,
-    QComboBox,
+    QApplication,
     QDialog,
     QDialogButtonBox,
     QFileDialog,
-    QLabel,
-    QLayout,
     QListView,
     QTreeView,
-    QVBoxLayout,
     QWidget,
 )
+
+from .appearance_controls import AppearanceSettingsDialog
+from .choice_buttons import AccentCheckBox
+from .settings import _settings
 
 
 class FileFolderDialog(QFileDialog):
@@ -78,29 +78,17 @@ class FileFolderDialog(QFileDialog):
         return list(self._selected)
 
 
-class SettingsDialog(QDialog):
-    """App preferences committed by Save and discarded by Cancel."""
+class SettingsDialog(AppearanceSettingsDialog):
+    """Fitted staged appearance and tooltip preferences."""
 
     def __init__(
         self, parent: QWidget | None = None, tooltips_enabled: bool = True, appearance: str = "system",
     ) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("Settings")
-
-        self.tooltips_check = QCheckBox("Show tooltips")
+        from .themes import apply_theme
+        super().__init__(_settings(), parent, theme_key="ui/appearance",
+                         apply_callback=lambda: apply_theme(QApplication.instance()))
+        self.appearance = self.controls.theme
+        self.appearance.setCurrentIndex(max(0, self.appearance.findData(appearance)))
+        self.tooltips_check = AccentCheckBox("Show tooltips")
         self.tooltips_check.setChecked(tooltips_enabled)
-        self.appearance = QComboBox()
-        for label, value in (("System", "system"), ("Dark", "dark"), ("Light", "light")):
-            self.appearance.addItem(label, value)
-        self.appearance.setCurrentIndex(self.appearance.findData(appearance))
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-
-        layout = QVBoxLayout(self)
-        layout.setSpacing(12)
-        layout.addWidget(QLabel("Appearance"))
-        layout.addWidget(self.appearance)
-        layout.addWidget(self.tooltips_check)
-        layout.addWidget(buttons)
-        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
+        self.content_layout.addWidget(self.tooltips_check)

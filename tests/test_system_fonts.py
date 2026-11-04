@@ -24,45 +24,55 @@ def test_invalid_desktop_setting_preserves_native_font(description, scale):
     assert system_fonts.desktop_font(native, description, scale, 96) == native
 
 
-def test_explicit_qt_settings_integration_is_respected(monkeypatch):
+def test_explicit_qt_settings_integration_is_respected(monkeypatch, tmp_path):
+    from photocropper.appearance import qt6ct_provider
     monkeypatch.setenv("XDG_CURRENT_DESKTOP", "X-Cinnamon")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    folder = tmp_path / "qt6ct"
+    folder.mkdir()
+    (folder / "qt6ct.conf").write_text('[Fonts]\ngeneral="Noto Sans,14,-1,5,400,0,0,0,0,0"\n')
+    monkeypatch.setenv("QT_QPA_PLATFORMTHEME", "qt5ct")
+    assert qt6ct_provider()["reason"] == "not-explicitly-selected"
     monkeypatch.setenv("QT_QPA_PLATFORMTHEME", "qt6ct")
-    assert system_fonts._desktop_schema() is None
+    assert qt6ct_provider()["font"].pointSizeF() == 14
 
 
-def test_missing_gsettings_is_safe(monkeypatch):
-    def missing(*args, **kwargs):
-        raise FileNotFoundError()
-    monkeypatch.setattr(system_fonts.subprocess, "run", missing)
-    assert system_fonts._setting("org.cinnamon.desktop.interface", "font-name") is None
+def test_missing_desktop_configuration_is_safe(monkeypatch, tmp_path):
+    from photocropper.appearance import qt6ct_provider
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_CONFIG_DIRS", str(tmp_path))
+    monkeypatch.setenv("QT_QPA_PLATFORMTHEME", "qt6ct")
+    assert qt6ct_provider()["reason"] == "configuration-unavailable"
 
 
-@pytest.mark.parametrize("platform,dpr,points", [("xcb", 1.5, 14), ("wayland", 1.0, 21)])
-def test_x11_text_scaling_is_not_applied_twice(monkeypatch, platform, dpr, points):
-    from types import SimpleNamespace
-    from unittest.mock import Mock
-    app = Mock(spec=["font", "setFont", "primaryScreen", "platformName"])
-    app.font.return_value = QFont("Liberation Sans", 14)
-    app.platformName.return_value = platform
-    app.primaryScreen.return_value = SimpleNamespace(
-        logicalDotsPerInchY=lambda: 96, devicePixelRatio=lambda: dpr)
-    monkeypatch.setattr(system_fonts.sys, "platform", "linux")
-    monkeypatch.setattr(system_fonts, "_desktop_schema", lambda: "org.cinnamon.desktop.interface")
-    monkeypatch.setattr(system_fonts, "_setting",
-                        lambda schema, key: "Liberation Sans 14" if key == "font-name" else 1.5)
-    system_fonts.apply_system_font(app)
-    assert app.setFont.call_args.args[0].pointSizeF() == points
-    system_fonts.apply_system_font(app)
-    assert app.setFont.call_count == 1
+@pytest.mark.parametrize("dpr,points", [(1.5, 14), (1.0, 21)])
+def test_provider_text_scaling_is_not_applied_twice(monkeypatch, dpr, points):
+    from photocropper.appearance import gtk_font
+    for key in ("QT_SCALE_FACTOR", "QT_SCREEN_SCALE_FACTORS", "QT_FONT_DPI"):
+        monkeypatch.delenv(key, raising=False)
+    payload = {"font": {"family": "Liberation Sans", "point_size": 14,
+                        "absolute_size": False, "weight": 400, "italic": False},
+               "font_dpi": 144, "widget_scale": 1}
+    resolved = gtk_font(QFont("Sans Serif", 9), payload, 96, dpr)
+    assert resolved.pointSizeF() == points
+    assert resolved.pointSizeF() * 96 / 72 * dpr == 28
 
 
-def test_stylesheet_baseline_includes_native_tables_and_new_dialogs():
+def test_stylesheet_baseline_includes_native_tables_and_new_dialogs(tmp_path):
+    from PySide6.QtCore import QSettings
     from PySide6.QtWidgets import QApplication, QDialog, QTableWidget
+
+    from photocropper.appearance import configure_appearance
     app = QApplication.instance() or QApplication([])
     previous_font, previous_style = QFont(app.font()), app.styleSheet()
+    previous_settings = getattr(app, "_studio_pilot_settings", None)
+    settings = QSettings(str(tmp_path / "appearance.ini"), QSettings.IniFormat)
     try:
         chosen = QFont("Sans Serif", 18)
-        app.setFont(chosen)
+        settings.setValue("appearance/font_mode", "custom")
+        settings.setValue("appearance/font_family", chosen.family())
+        settings.setValue("appearance/font_size_pt", 18)
+        configure_appearance(app, settings)
         app.setStyleSheet("QWidget {" + system_fonts.system_font_css(app) + "color: #222;}"
                          "QHeaderView::section { padding: 9px; }")
         dialog = QDialog()
@@ -75,5 +85,6 @@ def test_stylesheet_baseline_includes_native_tables_and_new_dialogs():
             assert widget.font().family() == chosen.family()
         dialog.close()
     finally:
+        configure_appearance(app, previous_settings)
         app.setStyleSheet(previous_style)
         app.setFont(previous_font)

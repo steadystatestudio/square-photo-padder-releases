@@ -1508,12 +1508,19 @@ def test_system_font_is_preserved_in_compact_layout_and_themes(tmp_path, points,
     from PySide6.QtGui import QFont
 
     from photocropper.themes import set_ui_scale
+    from photocropper.settings import _settings
+    from photocropper.appearance import configure_appearance
     _configure_settings(tmp_path)
     app = _app()
     original = QFont(app.font())
     font = QFont(original)
     font.setPointSizeF(points)
-    app.setFont(font)
+    settings = _settings()
+    saved = {key: settings.value(key) for key in settings.allKeys() if key.startswith("appearance/")}
+    settings.setValue("appearance/font_mode", "custom")
+    settings.setValue("appearance/font_family", font.family())
+    settings.setValue("appearance/font_size_pt", points)
+    configure_appearance(app, settings, theme_key="ui/appearance")
     try:
         apply_theme(app)
         window = MainWindow()
@@ -1535,7 +1542,12 @@ def test_system_font_is_preserved_in_compact_layout_and_themes(tmp_path, points,
             assert view.rect().contains(button.mapTo(view, button.rect().center()))
         window.close()
     finally:
-        app.setFont(original)
+        for key in settings.allKeys():
+            if key.startswith("appearance/"):
+                settings.remove(key)
+        for key, value in saved.items():
+            settings.setValue(key, value)
+        configure_appearance(app, settings, theme_key="ui/appearance")
         apply_theme(app)
 
 

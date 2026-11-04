@@ -62,6 +62,7 @@ def main() -> int:
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_DontUseNativeDialogs, True)
     app = QApplication.instance() or QApplication(sys.argv)
     from .system_fonts import capture_system_appearance
     capture_system_appearance(app)

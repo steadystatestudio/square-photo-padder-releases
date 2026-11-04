@@ -13,76 +13,15 @@ from photocropper.system_fonts import (
 
 
 def _is_system_dark_mode() -> bool:
-    """Detect if OS is in dark mode via multiple methods."""
-    import os
-    import subprocess
-    import sys
+    from .appearance import resolved_color_scheme
+    app = QApplication.instance()
+    resolved = resolved_color_scheme(app) if app else None
+    if resolved in {"dark", "light"}:
+        return resolved == "dark"
+    palette = app._studio_native_palette if app and hasattr(app, "_studio_native_palette") else QPalette()
+    color = palette.window().color()
+    return color.lightnessF() < .5
 
-    # 0. Explicit override via environment variable
-    override = os.environ.get("SPP_THEME", "").lower()
-    if override == "dark":
-        return True
-    if override == "light":
-        return False
-
-    # 1. Explicit GTK_THEME env var
-    gtk_theme = os.environ.get("GTK_THEME", "").lower()
-    if "dark" in gtk_theme:
-        return True
-
-    if sys.platform.startswith("linux"):
-        # 2. gsettings (GNOME/Cinnamon/MATE)
-        for schema_key in [
-            ("org.gnome.desktop.interface", "gtk-theme"),
-            ("org.gnome.desktop.interface", "color-scheme"),
-            ("org.cinnamon.desktop.interface", "gtk-theme"),
-        ]:
-            try:
-                result = subprocess.run(
-                    ["gsettings", "get", schema_key[0], schema_key[1]],
-                    capture_output=True, text=True, timeout=2,
-                )
-                if result.returncode == 0 and "dark" in result.stdout.lower():
-                    return True
-            except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-                continue
-
-        # 3. Read GTK3 settings.ini directly (works in AppImage)
-        for config_path in [
-            os.path.expanduser("~/.config/gtk-3.0/settings.ini"),
-            "/etc/gtk-3.0/settings.ini",
-        ]:
-            try:
-                with open(config_path) as f:
-                    for line in f:
-                        if "gtk-theme-name" in line.lower() and "dark" in line.lower():
-                            return True
-            except OSError:
-                continue
-
-    # 4. Windows registry (authoritative for Windows dark mode)
-    if sys.platform == "win32":
-        try:
-            import winreg
-
-            with winreg.OpenKey(
-                winreg.HKEY_CURRENT_USER,
-                r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
-            ) as key:
-                value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
-                return value == 0
-        except OSError:
-            pass
-
-    # 5. Palette luminance fallback (any platform)
-    color = QPalette().window().color()
-    luminance = 0.299 * color.red() + 0.587 * color.green() + 0.114 * color.blue()
-    return luminance < 128
-
-
-# ---------------------------------------------------------------------------
-# GTK theme color reading
-# ---------------------------------------------------------------------------
 
 def _read_gtk_colors() -> dict[str, str] | None:
     """Read color definitions from the active GTK3 theme CSS."""
@@ -457,7 +396,7 @@ def _apply_styled_sheet(app: QApplication, c: dict[str, str]) -> None:
             background-color: {c["base"]};
             border: 1px solid {c["border"]};
             border-radius: 10px;
-            padding: {px(12)}px;
+            padding: {px(6)}px;
         }}
 
         /* --- Buttons --- */
@@ -465,14 +404,14 @@ def _apply_styled_sheet(app: QApplication, c: dict[str, str]) -> None:
             background-color: {c["button"]};
             border: 1px solid {c["border"]};
             border-radius: 6px;
-            padding: {px(6)}px {px(16)}px;
+            padding: {px(5)}px {px(10)}px;
             color: {c["button_text"]};
             min-height: 0px;
         }}
         QPushButton:hover {{
             background-color: {c["hover"]};
         }}
-        QPushButton:focus, QLineEdit:focus, QSpinBox:focus {{
+        QPushButton:focus, QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
             border: 2px solid {c["highlight"]};
         }}
         QPushButton:pressed {{
@@ -543,7 +482,7 @@ def _apply_styled_sheet(app: QApplication, c: dict[str, str]) -> None:
         QLineEdit:focus {{
             border-color: {c["highlight"]};
         }}
-        QSpinBox {{
+        QSpinBox, QDoubleSpinBox {{
             background-color: {c["base"]};
             border: 1px solid {c["border"]};
             border-radius: 6px;

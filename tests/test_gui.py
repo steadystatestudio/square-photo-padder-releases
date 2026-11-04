@@ -1507,9 +1507,9 @@ def test_progress_track_groups_huge_batches(tmp_path: Path) -> None:
 def test_system_font_is_preserved_in_compact_layout_and_themes(tmp_path, points, monkeypatch):
     from PySide6.QtGui import QFont
 
-    from photocropper.themes import set_ui_scale
-    from photocropper.settings import _settings
     from photocropper.appearance import configure_appearance
+    from photocropper.settings import _settings
+    from photocropper.themes import set_ui_scale
     _configure_settings(tmp_path)
     app = _app()
     original = QFont(app.font())

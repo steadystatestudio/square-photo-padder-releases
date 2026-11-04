@@ -2,11 +2,12 @@
 from types import SimpleNamespace
 
 import pytest
-from photocropper.gui import MainWindow
 from PySide6.QtCore import QEvent, QRect, QSettings, Qt
 from PySide6.QtGui import QFont
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
+
+from photocropper.gui import MainWindow
 
 
 @pytest.fixture

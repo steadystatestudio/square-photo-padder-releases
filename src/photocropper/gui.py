@@ -140,7 +140,7 @@ class SegmentProgress(QProgressBar):
         self._done = 0
         self._progress_text: str | None = None
         self.setFormat("Ready")
-        self.setMinimumHeight(44)
+        self.setMinimumHeight(self.fontMetrics().height() + 16)
         self.setAccessibleName("Photo progress")
 
     def set_progress(self, done: int, total: int, text: str | None = None) -> None:
@@ -515,7 +515,7 @@ class MainWindow(QMainWindow):
         # and their permanent result stay outside this area, at normal font size.
         work_layout = QVBoxLayout()
         work_layout.setContentsMargins(0, 0, 0, 0)
-        work_layout.setSpacing(12)
+        work_layout.setSpacing(8)
         work_layout.addLayout(preview_layout, stretch=1)
         work_layout.addWidget(controls_widget)
         work_layout.addWidget(self.watermark_input)
@@ -530,7 +530,7 @@ class MainWindow(QMainWindow):
         # --- Main layout ---
         layout = QVBoxLayout()
         layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setSpacing(8)
         layout.addLayout(toolbar_layout)
         layout.addWidget(self.work_scroll, stretch=1)
         save_row = QHBoxLayout()

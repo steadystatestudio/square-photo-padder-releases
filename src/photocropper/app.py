@@ -63,6 +63,8 @@ def main() -> int:
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
     app = QApplication.instance() or QApplication(sys.argv)
+    from .system_fonts import capture_system_appearance
+    capture_system_appearance(app)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(APP_ORGANIZATION)
     app.setStyle("Fusion")

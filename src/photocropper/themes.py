@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QEvent, QObject
-from PySide6.QtGui import QColor, QFontInfo, QPalette
+from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication
 
-from photocropper.system_fonts import apply_system_font, system_font_css
+from photocropper.system_fonts import (
+    accent_colors,
+    apply_system_font,
+    bind_appearance_refresh,
+    system_font_css,
+)
 
 
 def _is_system_dark_mode() -> bool:
@@ -371,10 +376,14 @@ def _apply_theme(app: QApplication) -> None:
     dark = _is_system_dark_mode() if appearance == "system" else appearance == "dark"
 
     # Studio colors stay consistent; System follows the OS light/dark choice.
-    scheme = _D if dark else _L
+    scheme = dict(_D if dark else _L)
+    colors = accent_colors(app)
+    scheme.update(highlight=colors["accent"], highlight_text=colors["on_accent"],
+                  highlight_hover=colors["hover"], highlight_pressed=colors["pressed"])
     active_colors.update(scheme)
     _apply_gtk_palette(app, scheme)
     _apply_styled_sheet(app, scheme)
+    bind_appearance_refresh(app, lambda: apply_theme(app))
 
 
 
@@ -424,7 +433,6 @@ _L = {
 
 
 def _apply_styled_sheet(app: QApplication, c: dict[str, str]) -> None:
-    base_pt = QFontInfo(app.font()).pointSizeF()
 
     def px(value: float) -> int:
         return max(1, round(value * _UI_SCALE))
@@ -459,26 +467,31 @@ def _apply_styled_sheet(app: QApplication, c: dict[str, str]) -> None:
             border-radius: 6px;
             padding: {px(6)}px {px(16)}px;
             color: {c["button_text"]};
-            min-height: {px(28)}px;
+            min-height: 0px;
         }}
         QPushButton:hover {{
             background-color: {c["hover"]};
         }}
         QPushButton:focus, QLineEdit:focus, QSpinBox:focus {{
-            border: 2px solid #508fdb;
+            border: 2px solid {c["highlight"]};
         }}
         QPushButton:pressed {{
             background-color: {c["pressed"]};
         }}
         QPushButton#processBtn {{
-            background-color: #2768ad;
-            color: #ffffff;
+            background-color: {c["highlight"]};
+            color: {c["highlight_text"]};
             font-weight: 600;
-            padding: {px(10)}px {px(32)}px;
+            padding: {px(6)}px {px(14)}px;
             border-radius: 6px;
-            border: none;
-            font-size: {base_pt * 1.1:.1f}pt;
-            min-height: {px(36)}px;
+            border: 1px solid {c["highlight"]};
+            min-height: 0px;
+        }}
+        QPushButton#processBtn:enabled:focus {{
+            border: 1px solid {c["highlight_text"]};
+        }}
+        QPushButton#processBtn:enabled:pressed {{
+            background-color: {c["highlight_pressed"]};
         }}
         QPushButton#processBtn:disabled {{
             background-color: {c["disabled_bg"]};
@@ -486,7 +499,7 @@ def _apply_styled_sheet(app: QApplication, c: dict[str, str]) -> None:
             border: none;
         }}
         QPushButton#processBtn:hover:!disabled {{
-            background-color: #2f6db1;
+            background-color: {c["highlight_hover"]};
         }}
         QPushButton#colorSwatch {{
             border-radius: 4px;
@@ -505,7 +518,7 @@ def _apply_styled_sheet(app: QApplication, c: dict[str, str]) -> None:
             padding: {px(4)}px;
             min-width: {px(28)}px;
             max-width: {px(28)}px;
-            min-height: {px(28)}px;
+            min-height: 0px;
             max-height: {px(28)}px;
         }}
         QPushButton#iconBtn:hover {{
@@ -679,8 +692,7 @@ def _apply_styled_sheet(app: QApplication, c: dict[str, str]) -> None:
             text-align: center;
             color: {c["text"]};
             font-weight: 600;
-            font-size: {base_pt * 1.1:.1f}pt;
-            min-height: {px(36)}px;
+            min-height: 0px;
         }}
         QProgressBar::chunk {{
             background-color: {c["highlight"]};

@@ -34,6 +34,8 @@ def _run(directory: str) -> int:
     app = QApplication.instance() or QApplication([])
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(APP_ORGANIZATION)
+    from .system_fonts import capture_system_appearance
+    capture_system_appearance(app)
     app.setStyle("Fusion")
     # The Windows offscreen test platform can omit the desktop font catalog.
     # Register its installed font for diagnostic screenshots only; normal app
@@ -59,6 +61,8 @@ def _run(directory: str) -> int:
     assert window.status_label.text() == "1 photo ready. Choose Save Photo or Process All."
     assert not list(root.glob("*.jpg"))
     assert window.grab().save(str(root / "ui-ready.png"))
+    from .appearance_qa import capture_appearance
+    capture_appearance(app, window, root)
     batch = window.process_paths([source])
     assert batch.success_count == 1 and batch.failure_count == 0
     result = batch.results[0]

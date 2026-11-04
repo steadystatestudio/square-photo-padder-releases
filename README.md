@@ -207,3 +207,5 @@ On Linux, the destination filesystem must support atomic no-replace renames.
 Unsupported Windows-mounted, removable or network filesystems may refuse a save
 rather than risk overwriting another file. Copy the photos to a normal local Linux
 folder and retry; the failed save does not replace the originals.
+
+See [Desktop appearance](docs/APPEARANCE.md) for system fonts, accents, scaling and restart behavior.

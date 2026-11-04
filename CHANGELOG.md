@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.3.0 — 2026-11-03
+## 1.3.1 — 2026-11-03
 
 All interface text follows the configured desktop UI size, including headings, Help, tables and status. Document pages, exported captions and watermarks retain their own content typography.
 

@@ -41,7 +41,7 @@ def capture_appearance(app, window, destination):
     records = []
 
     def settle():
-        deadline = time.monotonic() + 0.15
+        deadline = time.monotonic() + 0.4
         while time.monotonic() < deadline:
             app.processEvents()
             time.sleep(0.005)
@@ -66,7 +66,15 @@ def capture_appearance(app, window, destination):
             for width in (1280, 960, 820, 1):
                 window.resize(width, min(800, window.screen().availableGeometry().height() - 50))
                 settle()
-                area, frame = window.screen().availableGeometry(), window.frameGeometry()
+                # Wayland configure acknowledgements arrive asynchronously. Allow
+                # the real size guard to finish; the same bounds assertion remains
+                # mandatory if the window has not fitted after this bounded wait.
+                deadline = time.monotonic() + 2
+                while time.monotonic() < deadline:
+                    area, frame = window.screen().availableGeometry(), window.frameGeometry()
+                    if frame.width() <= area.width() + 2 and frame.height() <= area.height() + 2:
+                        break
+                    settle()
                 assert frame.width() <= area.width() + 2 and frame.height() <= area.height() + 2, (
                     label,
                     frame.getRect(),

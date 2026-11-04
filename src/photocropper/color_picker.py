@@ -12,7 +12,7 @@ Windows and Linux.
 from __future__ import annotations
 
 from PySide6.QtCore import QEvent, QPointF, QRectF, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen
+from PySide6.QtGui import QColor, QGuiApplication, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import (
     QDialog,
     QGridLayout,
@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from photocropper.desktop_geometry import available_geometry, workarea_provider
 from photocropper.settings import load_custom_colors, save_custom_colors
 from photocropper.themes import active_colors, ui_scale
 
@@ -281,14 +282,19 @@ class BackgroundColorDialog(QDialog):
         self.shade_square.set_color(QColor(*initial))
         self.hue_strip.set_hue(self.shade_square.hue())
         self._fitting = False
-        QTimer.singleShot(0, self._fit_form)
+        self._fit_timer = QTimer(self)
+        self._fit_timer.setSingleShot(True)
+        self._fit_timer.timeout.connect(self._fit_form)
+        self._workarea = workarea_provider(QGuiApplication.instance())
+        self._workarea.changed.connect(self._fit_timer.start)
+        self._fit_timer.start(0)
 
     def _fit_form(self) -> None:
-        if self._fitting:
+        if self._fitting or self.isMaximized() or self.isFullScreen() or self.isMinimized():
             return
         self._fitting = True
         try:
-            area = self.screen().availableGeometry()
+            area = available_geometry(self, self.screen().availableGeometry())
             cap_width, cap_height = max(1, area.width() - 48), max(1, area.height() - 80)
             side = self._swatch_side
             columns = max(1, min(12, (cap_width - 24) // (side + 4)))
@@ -320,13 +326,21 @@ class BackgroundColorDialog(QDialog):
 
     def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)
+        if self.windowHandle() and not getattr(self, "_fit_screen_connected", False):
+            self.windowHandle().screenChanged.connect(self._screen_changed)
+            self._fit_screen_connected = True
         self._fit_form()
+
+    def _screen_changed(self, *_):
+        self._workarea.refresh()
+        self._fit_timer.start(0)
 
     def changeEvent(self, event) -> None:  # noqa: N802
         super().changeEvent(event)
         if event.type() in {QEvent.Type.FontChange, QEvent.Type.ApplicationFontChange, QEvent.Type.StyleChange}:
-            if hasattr(self, "_mix_layout"):
-                QTimer.singleShot(0, self._fit_form)
+            if hasattr(self, "_fit_timer"):
+                self._workarea.refresh()
+                self._fit_timer.start(0)
 
     # --- Result ---
 

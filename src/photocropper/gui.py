@@ -6,7 +6,16 @@ from pathlib import Path
 from typing import Iterable
 
 from PIL import Image
-from PySide6.QtCore import QEasingCurve, QEvent, QRect, QRectF, QSize, Qt, QTimer, QVariantAnimation
+from PySide6.QtCore import (
+    QEasingCurve,
+    QEvent,
+    QRect,
+    QRectF,
+    QSize,
+    Qt,
+    QTimer,
+    QVariantAnimation,
+)
 from PySide6.QtGui import (
     QColor,
     QDesktopServices,
@@ -56,6 +65,7 @@ from photocropper.constants import (
     RESIZE_PRESET_SIZES,
     WINDOW_TITLE,
 )
+from photocropper.desktop_geometry import available_geometry
 from photocropper.dialogs import FileFolderDialog, SettingsDialog
 from photocropper.flow_layout import FlowLayout
 from photocropper.icons import (
@@ -1289,14 +1299,19 @@ class MainWindow(QMainWindow):
     # --- Window geometry ---
 
     def _fit_to_screen(self) -> None:
+        if self.isMaximized() or self.isFullScreen() or self.isMinimized():
+            return
         screen = self.screen() or QApplication.primaryScreen()
         if screen is not None:
-            self._fit_to_available_geometry(screen.availableGeometry())
+            # Resolve the native constraint before the explicit-area recovery
+            # path, which intentionally bypasses desktop-provider provenance.
+            self.window_size_guard.update()
+            self._fit_to_available_geometry(available_geometry(self, screen.availableGeometry()))
 
     def _fit_to_available_geometry(self, available: QRect) -> None:
-        self.window_size_guard.update(available)
-        if self.isMaximized() or self.isFullScreen():
+        if self.isMaximized() or self.isFullScreen() or self.isMinimized():
             return
+        self.window_size_guard.update(available)
         frame = self.frameGeometry()
         extra_width = max(0, frame.width() - self.width())
         extra_height = max(0, frame.height() - self.height())
@@ -1308,10 +1323,12 @@ class MainWindow(QMainWindow):
         self.move(x, y)
 
     def _center_on_screen(self) -> None:
+        if self.isMaximized() or self.isFullScreen() or self.isMinimized():
+            return
         screen = self.screen() or QApplication.primaryScreen()
         if screen is None:
             return
-        available = screen.availableGeometry()
+        available = available_geometry(self, screen.availableGeometry())
         frame = self.frameGeometry()
         frame.moveCenter(available.center())
         self.move(frame.topLeft())

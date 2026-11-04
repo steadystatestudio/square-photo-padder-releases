@@ -2,12 +2,11 @@
 from types import SimpleNamespace
 
 import pytest
-from PySide6.QtCore import QEvent, QRect, QSettings
+from photocropper.gui import MainWindow
+from PySide6.QtCore import QEvent, QRect, QSettings, Qt
 from PySide6.QtGui import QFont
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
-
-from photocropper.gui import MainWindow
 
 
 @pytest.fixture
@@ -80,3 +79,17 @@ def test_larger_font_grows_minimum_without_shrinking_text(sized_window):
     assert window.font().pointSize() == 18
     assert window.minimumWidth() > before.width()
     assert window.minimumHeight() > before.height()
+
+
+@pytest.mark.parametrize("state", [Qt.WindowMaximized, Qt.WindowFullScreen, Qt.WindowMinimized])
+def test_legacy_fit_callbacks_leave_compositor_window_states_alone(sized_window, monkeypatch, state):
+    window, _ = sized_window
+    window.setWindowState(state)
+    calls = []
+    monkeypatch.setattr(window.window_size_guard, "update", lambda *args: calls.append("guard"))
+    monkeypatch.setattr(window, "resize", lambda *args: calls.append("resize"))
+    monkeypatch.setattr(window, "move", lambda *args: calls.append("move"))
+    window._fit_to_screen()
+    window._fit_to_available_geometry(QRect(0, 0, 800, 600))
+    window._center_on_screen()
+    assert calls == []

@@ -153,7 +153,7 @@ def copy_notices(root: Path, bundle: Path, target_platform: str) -> None:
     (bundle / "LICENSE-INDEX.json").write_text(json.dumps(license_index, indent=2) + "\n", encoding="utf-8")
     native_libraries = {}
     for path in sorted((bundle / "_internal").rglob("*")):
-        if path.is_file() and (path.suffix.lower() in {".dll", ".pyd", ".dylib"} or ".so" in path.name):
+        if path.is_file() and (path.suffix.lower() in {".dll", ".pyd", ".dylib"} or ".so" in path.name or path.name == "appearance-probe"):
             with path.open("rb") as stream:
                 native_libraries[path.relative_to(bundle).as_posix()] = hashlib.file_digest(
                     stream, "sha256",

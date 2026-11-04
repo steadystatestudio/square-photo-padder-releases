@@ -8,6 +8,7 @@ ROOT = Path(SPECPATH)
 SRC = ROOT / "src"
 sys.path.insert(0, str(ROOT / "scripts"))
 from linux_dependencies import omit_system_libraries
+from build_appearance_probe import appearance_datas
 ICON = ROOT / "packaging" / "linux" / "square-photo-padder.png"
 
 datas = [
@@ -32,8 +33,8 @@ a = Analysis(
     ["src/photocropper/__main__.py"],
     pathex=[str(SRC)],
     binaries=[],
-    datas=datas,
-    hiddenimports=hiddenimports,
+    datas=datas + appearance_datas(ROOT, "photocropper"),
+    hiddenimports=hiddenimports + ["PySide6.QtDBus"],
     hookspath=[str(ROOT / "packaging/hooks")],
     hooksconfig={},
     runtime_hooks=[],

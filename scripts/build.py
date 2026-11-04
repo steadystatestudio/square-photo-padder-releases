@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from build_appearance_probe import build as build_appearance_probe, stage_probe
+
 from build_environment import pyinstaller_environment
 from build_manifest import write_manifest
 from packaging_notices import copy_notices, verify_qt_subset
@@ -23,6 +25,7 @@ def main() -> None:
     os.chdir(ROOT)
     build, dist = ROOT / "build", ROOT / "dist"
     build.mkdir(exist_ok=True)
+    build_appearance_probe()
     os.environ["PYINSTALLER_CONFIG_DIR"] = str(build / "pyinstaller-cache")
     windows = sys.platform == "win32"
     name = "Square-Photo-Padder" if windows else "square-photo-padder"
@@ -30,6 +33,7 @@ def main() -> None:
     subprocess.run([sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", spec],
                    check=True, env=pyinstaller_environment())
     bundle = dist / name
+    stage_probe(bundle, "photocropper")
     verify_qt_subset(bundle)
     copy_notices(ROOT, bundle, sys.platform)
     if windows:

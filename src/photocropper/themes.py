@@ -215,6 +215,7 @@ def _apply_gtk_palette(app: QApplication, scheme: dict[str, str]) -> None:
     palette.setColor(QPalette.ColorRole.Base, QColor(scheme["base"]))
     palette.setColor(QPalette.ColorRole.Text, QColor(scheme["input_text"]))
     palette.setColor(QPalette.ColorRole.Button, QColor(scheme["button"]))
+    palette.setColor(QPalette.ColorRole.Mid, QColor(scheme["border"]))
     palette.setColor(
         QPalette.ColorRole.ButtonText, QColor(scheme["button_text"]),
     )

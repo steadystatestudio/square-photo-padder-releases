@@ -88,3 +88,26 @@ def test_background_form_fits_and_only_scrolls_when_monitor_cannot_fit(window, m
     bounds = QRect(dialog.use_btn.mapTo(dialog._scroll.viewport(), QPoint()), dialog.use_btn.size())
     assert dialog._scroll.viewport().rect().intersects(bounds)
     dialog.reject()
+
+
+@pytest.mark.parametrize("theme", ["dark", "light"])
+def test_unchecked_choice_keeps_a_visible_neutral_outline(window, theme):
+    from PySide6.QtGui import QImage, QPainter
+
+    from photocropper.choice_buttons import paint_choice_button
+    from photocropper.system_fonts import contrast_ratio
+
+    app, w = window
+    w.appearance_settings.setValue("ui/appearance", theme)
+    configure_appearance(app, w.appearance_settings, theme_key="ui/appearance")
+    apply_theme(app)
+    app.processEvents()
+    palette = w.overwrite_check.palette()
+    image = QImage(120, 40, QImage.Format_ARGB32)
+    image.fill(palette.window().color())
+    painter = QPainter(image)
+    paint_choice_button(painter, image.rect(), "Overwrite", palette)
+    painter.end()
+    # Compare the antialiased outline with an adjacent empty part of the face.
+    # A native Mid role near the face color made the unchecked control disappear.
+    assert contrast_ratio(image.pixelColor(1, 20), image.pixelColor(8, 20)) >= 1.2

@@ -27,9 +27,9 @@ from PySide6.QtWidgets import (
 )
 
 from photocropper.desktop_geometry import available_geometry, workarea_provider
-from photocropper.window_screen import observe_window_screen
 from photocropper.settings import load_custom_colors, save_custom_colors
 from photocropper.themes import active_colors, ui_scale
+from photocropper.window_screen import observe_window_screen
 
 # One row of common backgrounds: neutrals first (most product photos sit on
 # white/gray/black), then one of each basic color. Deliberately few — the

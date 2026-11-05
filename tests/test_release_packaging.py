@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -18,8 +19,49 @@ def packaging_release_repository(monkeypatch):
 
 def test_matching_source_versions():
     index = source_index()
-    assert index['qt_version'] == '6.11.2'
+    assert index['qt_version'] == '6.12.0'
     assert len(index['archives']) == 5
+    assert index['binding_versions']['PySide6_Pdf'] == '6.12.0.140'
+    assert index['binding_versions']['PySide6_WebEngine'] == '6.12.0.140'
+
+
+@pytest.mark.parametrize('name', ['PySide6_Pdf', 'PySide6_WebEngine'])
+def test_source_index_rejects_missing_or_stale_split_distribution_pins(tmp_path, name):
+    folder = tmp_path / 'packaging'
+    folder.mkdir()
+    index = source_index()
+    (folder / 'build-constraints.txt').write_text((ROOT / 'packaging/build-constraints.txt').read_text())
+    index['binding_versions'][name] = '6.12.0'
+    (folder / 'source-archives.json').write_text(json.dumps(index))
+    with pytest.raises(ValueError, match='dependency lock'):
+        source_index(tmp_path)
+    index['binding_versions'].pop(name)
+    (folder / 'source-archives.json').write_text(json.dumps(index))
+    with pytest.raises(ValueError, match='Incomplete'):
+        source_index(tmp_path)
+
+
+@pytest.mark.parametrize('name', ['PySide6_Pdf', 'PySide6_WebEngine'])
+def test_release_rejects_unversioned_split_sdk_even_when_core_qt_matches(name):
+    from photocropper.constants import APP_VERSION
+    index = source_index()
+    info = dict(source_commit='a'*40, source_tree='b'*40, platform='linux', qt_runtime='6.12.0',
+                application_version=APP_VERSION, source_dirty=False, dependencies=dict(index['binding_versions']))
+    check_build_info(info, 'a'*40, 'b'*40, 'linux')
+    info['dependencies'][name] = '6.12.0'
+    with pytest.raises(ValueError, match='dependencies'):
+        check_build_info(info, 'a'*40, 'b'*40, 'linux')
+
+
+def test_build_checks_the_actual_split_sdk_before_collecting_notices(monkeypatch):
+    import packaging_notices
+    index = source_index()
+    monkeypatch.setattr(packaging_notices.metadata, 'version', lambda name: index['binding_versions'][name])
+    packaging_notices.verify_qt_sdk(index)
+    monkeypatch.setattr(packaging_notices.metadata, 'version', lambda name:
+                        '6.12.0' if name == 'PySide6_Pdf' else index['binding_versions'][name])
+    with pytest.raises(RuntimeError, match='SDK'):
+        packaging_notices.verify_qt_sdk(index)
 
 
 @pytest.mark.parametrize('mutation', [
@@ -78,7 +120,7 @@ def test_qa_archive_omits_settings_and_input_photos(tmp_path):
 
 
 def test_dirty_build_not_releasable():
-    info = dict(source_commit='a'*40, source_tree='b'*40, platform='linux', qt_runtime='6.11.2',
+    info = dict(source_commit='a'*40, source_tree='b'*40, platform='linux', qt_runtime='6.12.0',
                 application_version='1.1.2', source_dirty=True)
     with pytest.raises(ValueError):
         check_build_info(info, 'a'*40, 'b'*40, 'linux')

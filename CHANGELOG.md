@@ -6,6 +6,7 @@
 - Add saved app-wide appearance controls, Refresh and appearance-only Reset, with fitted settings dialogs.
 - Measure compact window minimums from current controls instead of multiplying a fixed workspace by font size. Preserve useful previews and use scrolling only on constrained screens.
 - Style checkbox choices as accent buttons while retaining checkbox state and keyboard behavior. Existing photo processing and output formats are unchanged.
+- Use Qt 6.12's fix for stale layout-item pointers, with matching SDK/source notices and Python 3.11/3.12 rendering checks.
 
 
 ## 1.3.1 — 2026-11-03

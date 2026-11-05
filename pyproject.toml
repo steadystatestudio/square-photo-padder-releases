@@ -11,9 +11,9 @@ license = {text = "MIT"}
 requires-python = ">=3.11"
 dependencies = [
   "Pillow>=10.4.0",
-  # Qt 6.12.0 aborts on Python 3.11 during repeated QPainter icon rendering.
-  # Keep local installs and CI on the runtime validated by both Python suites.
-  "PySide6==6.11.2",
+  # Qt 6.12 fixes stale QLayoutItem parenting (PYSIDE-3469).
+  # Recheck the historical Python 3.11 icon-rendering abort in both Python GUI suites.
+  "PySide6==6.12.0",
 ]
 
 [project.optional-dependencies]

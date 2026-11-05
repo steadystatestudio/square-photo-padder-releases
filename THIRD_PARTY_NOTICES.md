@@ -6,7 +6,7 @@ MIT-licensed Contact Sheet Maker. Application and third-party licenses are separ
 
 - Python: PSF license; complete license retained in `licenses/Python-LICENSE.txt`.
 - Pillow: MIT-CMU and bundled component licenses, retained under `licenses/Pillow`.
-- Qt / PySide6 / Shiboken 6.11.2: LGPLv3 alternative. QtCore, QtGui and QtWidgets
+- Qt / PySide6 / Shiboken 6.12.0: LGPLv3 alternative. QtCore, QtGui and QtWidgets
   remain dynamically linked and separately replaceable in the one-folder bundle.
   There is no restriction on reverse engineering to debug modifications to these
   libraries. See `LIBRARY-REPLACEMENT.txt`, included LGPL/GPL texts and retained

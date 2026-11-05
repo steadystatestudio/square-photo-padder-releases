@@ -21,8 +21,15 @@ MAX_SOURCE_BYTES = 1_500_000_000
 def source_index(root: Path = ROOT) -> dict:
     index = json.loads((root / "packaging/source-archives.json").read_text(encoding="utf-8"))
     lock = (root / "packaging/build-constraints.txt").read_text(encoding="utf-8")
-    for name in ("PySide6", "PySide6_Addons", "PySide6_Essentials", "shiboken6"):
-        if not re.search(rf"(?mi)^{re.escape(name)}=={re.escape(index['qt_version'])}$", lock):
+    bindings = index["binding_versions"]
+    if set(bindings) != {"PySide6", "PySide6_Addons", "PySide6_Essentials", "shiboken6",
+                         "PySide6_Pdf", "PySide6_WebEngine"}:
+        raise ValueError("Incomplete Qt binding distribution pins")
+    if any(bindings[name] != index["qt_version"]
+           for name in ("PySide6", "PySide6_Addons", "PySide6_Essentials", "shiboken6")):
+        raise ValueError("Core Qt bindings do not match the retained Qt source")
+    for name, version in bindings.items():
+        if not isinstance(version, str) or not re.search(rf"(?mi)^{re.escape(name)}=={re.escape(version)}$", lock):
             raise ValueError("Qt source pins do not match the dependency lock")
     for item in index["archives"]:
         if (Path(item["name"]).name != item["name"] or "/" in item["name"] or "\\" in item["name"]

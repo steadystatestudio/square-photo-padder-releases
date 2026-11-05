@@ -20,9 +20,19 @@ from fetch_release_sources import source_index
 
 NAME = "Square-Photo-Padder"
 LICENSE_PACKAGES = (
-    "Pillow", "PySide6", "PySide6_Essentials", "PySide6_Addons",
+    "Pillow", "PySide6", "PySide6_Essentials", "PySide6_Addons", "PySide6_Pdf", "PySide6_WebEngine",
     "shiboken6", "PyInstaller", "altgraph", "packaging", "setuptools",
 )
+
+def verify_qt_sdk(index: dict) -> None:
+    """Check the actual split SDK, including distributions with build suffixes."""
+    from PySide6.QtCore import qVersion
+    if qVersion() != index["qt_version"]:
+        raise RuntimeError("Qt runtime differs from retained source pins")
+    for name, expected in index["binding_versions"].items():
+        if metadata.version(name) != expected:
+            raise RuntimeError("Installed Qt SDK differs from retained distribution pins")
+
 
 def verify_qt_subset(bundle: Path) -> None:
     """Fail closed if optional, unreviewed Qt components return to the package."""
@@ -101,10 +111,8 @@ def write_build_info(root: Path, bundle: Path, target_platform: str) -> None:
 
 
 def copy_notices(root: Path, bundle: Path, target_platform: str) -> None:
-    from PySide6.QtCore import qVersion
     index = source_index(root)
-    if qVersion() != index["qt_version"]:
-        raise RuntimeError("Qt runtime differs from retained source pins")
+    verify_qt_sdk(index)
     (bundle / "SOURCE-INDEX.json").write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
     shutil.copy2(root / "packaging/LIBRARY-REPLACEMENT.txt", bundle / "LIBRARY-REPLACEMENT.txt")
     for name in ("README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "packaging/build-constraints.txt"):

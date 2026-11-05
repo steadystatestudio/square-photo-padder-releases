@@ -149,13 +149,15 @@ def qa_archive(artifacts: Path, target: Path) -> Path:
 
 
 def check_build_info(info: dict, commit: str, tree: str, platform: str) -> None:
+    from fetch_release_sources import source_index
+    index = source_index(ROOT)
     version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
     if (info.get("source_commit") != commit or info.get("source_tree") != tree
-            or info.get("platform") != platform or info.get("qt_runtime") != "6.11.2"
+            or info.get("platform") != platform or info.get("qt_runtime") != index["qt_version"]
             or info.get("application_version") != version or info.get("source_dirty") is not False):
         raise ValueError("BUILD-INFO does not match the tested source/platform/Qt version")
-    for name in ("PySide6", "PySide6_Addons", "PySide6_Essentials", "shiboken6"):
-        if info.get("dependencies", {}).get(name) != "6.11.2":
+    for name, expected in index["binding_versions"].items():
+        if info.get("dependencies", {}).get(name) != expected:
             raise ValueError("BUILD-INFO dependencies do not match retained sources")
 
 

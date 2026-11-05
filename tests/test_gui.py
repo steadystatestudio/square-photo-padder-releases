@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from PIL import Image
 from PySide6.QtCore import QEvent, QMimeData, QPoint, QRect, QSettings, Qt, QUrl
-from PySide6.QtGui import QCloseEvent, QDropEvent
+from PySide6.QtGui import QAccessible, QAccessibleActionInterface, QCloseEvent, QDropEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
@@ -210,6 +210,72 @@ def test_resize_preset_applies_to_batch_outputs(tmp_path: Path, preset, source_s
         assert processed.size == (side, side)
         assert max(processed.getpixel((side // 2, 5))) <= 2
         assert processed.getpixel((side // 2, side // 2))[0] > 240
+
+
+@pytest.mark.parametrize("selection_route", ["accessible-toggle", "mouse", "keyboard"])
+def test_size_selection_routes_export_the_selected_dimensions(tmp_path: Path, selection_route: str) -> None:
+    """Assistive Toggle, mouse and Space must agree with the files actually saved."""
+    from photocropper.settings import load_resize_preference
+
+    _configure_settings(tmp_path)
+    app = _app()
+    source = tmp_path / "photo.png"
+    Image.new("RGB", (2200, 1100), (255, 255, 0)).save(source)
+    original = source.read_bytes()
+    window = MainWindow()
+    window.show()
+    window.custom_size_spin.setValue(1200)
+    window._open_paths([source])
+    app.processEvents()
+
+    # Exercise both directions, including Original and Custom, without invoking
+    # the private selection handler or bypassing the normal Process action.
+    choices = [("1000", 1000), ("Original", 2200), ("2048", 2048),
+               ("1000", 1000), ("Custom", 1200), ("Original", 2200)]
+    for index, (label, side) in enumerate(choices, start=1):
+        button = next(button for button in window._resize_buttons if button.text() == label)
+        if selection_route == "accessible-toggle":
+            interface = QAccessible.queryAccessibleInterface(button)
+            assert interface is not None
+            actions = interface.actionInterface()
+            assert actions is not None
+            action = QAccessibleActionInterface.toggleAction()
+            assert action in actions.actionNames()
+            actions.doAction(action)
+        elif selection_route == "mouse":
+            QTest.mouseClick(button, Qt.MouseButton.LeftButton)
+        else:
+            button.setFocus()
+            QTest.keyClick(button, Qt.Key.Key_Space)
+        app.processEvents()
+        assert button.isChecked()
+        assert [button for button in window._resize_buttons if button.isChecked()] == [button]
+        window.process_btn.click()
+
+        output = tmp_path / f"photo ({index}).jpg"
+        with Image.open(output) as processed:
+            assert processed.size == (side, side), (selection_route, label)
+        assert "1 succeeded, 0 failed" in window.status_label.text()
+        setting = window.current_resize_setting()
+        expected_label = "Original" if label == "Original" else f"Custom {side}" if label == "Custom" else str(side)
+        assert setting.output_label == expected_label
+        preference = load_resize_preference()
+        assert preference.mode == window._resize_mode
+        assert preference.size_px == window._resize_size_px
+        assert source.read_bytes() == original
+
+
+def test_restoring_size_does_not_save_preferences(tmp_path: Path) -> None:
+    from photocropper.settings import StoredResizePreference, save_resize_preference
+
+    _configure_settings(tmp_path)
+    _app()
+    save_resize_preference(StoredResizePreference(mode="preset:1600", size_px=1600))
+    with patch("photocropper.gui.save_resize_preference") as save:
+        window = MainWindow()
+    save.assert_not_called()
+    assert window.current_resize_setting().size_px == 1600
+    assert window._resize_group.checkedButton().text() == "1600"
 
 
 def test_custom_resize_is_restored_from_settings(tmp_path: Path) -> None:

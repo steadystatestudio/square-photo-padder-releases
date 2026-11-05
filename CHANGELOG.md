@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Keep the selected output size and exported dimensions in sync when assistive technology uses Toggle.
+- Require Pillow 13.0.0 or later and use 13.0.0 for packaged builds.
+
 ## 1.4.3 — 2026-11-04
 
 - Follow Linux desktop font, size, light/dark and accent preferences with independent providers and readable fallbacks; appearance detection needs no system Python or PyGObject.

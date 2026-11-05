@@ -11,6 +11,7 @@ from PySide6.QtCore import (
     QEvent,
     QRect,
     QRectF,
+    QSignalBlocker,
     QSize,
     Qt,
     QTimer,
@@ -375,7 +376,8 @@ class MainWindow(QMainWindow):
 
         def _add_size(label: str, data: object, tooltip: str) -> QPushButton:
             btn = _make_seg_button(label, data)
-            btn.clicked.connect(lambda _, d=data: self._handle_resize_choice(d))
+            # Accessibility Toggle changes checked state without emitting clicked.
+            btn.toggled.connect(lambda checked, d=data: self._handle_resize_choice(d) if checked else None)
             self._resize_group.addButton(btn)
             self._resize_buttons.append(btn)
             self._set_tooltip(btn, tooltip)
@@ -1011,7 +1013,10 @@ class MainWindow(QMainWindow):
         else:
             target = self._resize_size_px
         for btn in self._resize_buttons:
-            btn.setChecked(btn.property("segData") == target)
+            # Restoring/model-driven selection must not re-enter the handler or
+            # turn save=False into a preference write.
+            with QSignalBlocker(btn):
+                btn.setChecked(btn.property("segData") == target)
 
     def apply_custom_resize(self, size_px: int, save_preference: bool = True) -> None:
         self._custom_resize_size = int(size_px)

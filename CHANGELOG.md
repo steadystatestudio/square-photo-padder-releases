@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.4.2 — 2026-11-04
+## 1.4.3 — 2026-11-04
 
 - Follow Linux desktop font, size, light/dark and accent preferences with independent providers and readable fallbacks; appearance detection needs no system Python or PyGObject.
 - Add saved app-wide appearance controls, Refresh and appearance-only Reset, with fitted settings dialogs.

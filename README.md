@@ -102,7 +102,9 @@ SPP_THEME=dark ./Square-Photo-Padder-x86_64.AppImage
 
 ## Development
 
-Requires Python 3.11+.
+Source and release builds require Python 3.12+. The pinned Linux Qt bindings
+fail reference-count checks on Python 3.11. Downloaded Windows ZIP and Linux
+AppImage packages include Python; users do not need to install it.
 
 ```bash
 # Setup

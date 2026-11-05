@@ -398,5 +398,5 @@ class BackgroundColorDialog(QDialog):
             self._custom_layout.addWidget(swatch, 0, index)
         self._custom_layout.addWidget(self.clear_colors_btn, 1, 0)
         self._custom_row.setVisible(bool(self._custom_colors))
-        if hasattr(self, "_mix_layout"):
-            QTimer.singleShot(0, self._fit_form)
+        if hasattr(self, "_fit_timer"):
+            self._fit_timer.start(0)

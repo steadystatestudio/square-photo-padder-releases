@@ -8,11 +8,11 @@ version = "1.4.0"
 description = "Desktop app for padding photos to square images without cropping anything out."
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
   "Pillow>=10.4.0",
   # Qt 6.12 fixes stale QLayoutItem parenting (PYSIDE-3469).
-  # Recheck the historical Python 3.11 icon-rendering abort in both Python GUI suites.
+  # Python 3.12+ avoids the verified Linux/Python 3.11 None-refcount defect.
   "PySide6==6.12.0",
 ]
 

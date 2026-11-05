@@ -21,7 +21,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-22.04]
-        python: ['3.11', '3.12']
+        # Shared by normal CI and build-release.yml's reusable quality gate.
+        python: ['3.12']
     runs-on: ${{ matrix.os }}
     env:
       QT_QPA_PLATFORM: offscreen

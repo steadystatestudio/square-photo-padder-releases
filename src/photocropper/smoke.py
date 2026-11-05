@@ -44,7 +44,7 @@ def _run(directory: str) -> int:
     # launches always use the operating system's own font selection.
     import os
 
-    from PySide6.QtGui import QFontDatabase
+    from PySide6.QtGui import QAccessible, QAccessibleActionInterface, QFontDatabase
     if os.name == "nt" and app.platformName() == "offscreen":
         for name in ("segoeui.ttf", "seguisb.ttf"):
             path = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts" / name
@@ -78,6 +78,27 @@ def _run(directory: str) -> int:
     assert window.progress_bar.progress_value() == window.progress_bar.progress_total() == 1
     app.processEvents()
     assert window.grab().save(str(root / "ui.png"))
+    # Exercise the actual accessibility action in the frozen app, then inspect
+    # exported pixels in both directions rather than trusting the highlighted size.
+    large_source = root / "accessible-size.png"
+    Image.new("RGB", (2200, 1100), "red").save(large_source)
+    large_before = large_source.read_bytes()
+    window._open_paths([large_source])
+    for index, (label, side) in enumerate((("1000", 1000), ("Original", 2200)), start=1):
+        button = next(button for button in window._resize_buttons if button.text() == label)
+        interface = QAccessible.queryAccessibleInterface(button)
+        assert interface is not None
+        actions = interface.actionInterface()
+        assert actions is not None
+        action = QAccessibleActionInterface.toggleAction()
+        assert action in actions.actionNames()
+        actions.doAction(action)
+        assert button.isChecked()
+        window.process_btn.click()
+        with Image.open(root / f"accessible-size ({index}).jpg") as output:
+            assert output.size == (side, side)
+        assert "1 succeeded, 0 failed" in window.status_label.text()
+        assert large_source.read_bytes() == large_before
     window.close()
     neighbor = root / "sample.jpg"
     neighbor.write_bytes(b"keep existing neighbor")
@@ -125,6 +146,7 @@ def _run(directory: str) -> int:
     (root / "result.json").write_text(json.dumps({
         "success": True, "checks": ["packaged GUI", "ready selection has zero completed outputs",
                                    "processing progress counts completed files", "square JPEG output",
+                                   "accessibility Toggle exports selected dimensions in both directions",
                                    "source preserved",
                                    "neighbor collision preserved", "overwrite JPEG", "ICC and alpha compositing",
                                    "EXIF orientation", "export metadata removed",

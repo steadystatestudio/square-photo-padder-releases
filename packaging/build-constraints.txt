@@ -1,6 +1,6 @@
 # Runtime and packaging versions used for the unsigned testing candidate.
 PySide6==6.12.0
-Pillow==12.3.0
+Pillow==13.0.0
 PyInstaller==6.22.3
 pyinstaller-hooks-contrib==2026.8
 

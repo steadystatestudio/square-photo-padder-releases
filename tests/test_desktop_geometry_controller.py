@@ -126,7 +126,7 @@ def test_untrusted_failure_reason_is_sanitized(app, module, monkeypatch):
     "body,reason",
     [
         ("printf '%s' '{invalid json}'", "invalid-helper-response"),
-        ("kill -SEGV $$", "helper-crashed"),
+        ("kill -KILL $$", "helper-crashed"),
         ("exec /bin/sleep 5", "helper-timeout"),
         ("printf '%17000s' x", "helper-response-too-large"),
     ],

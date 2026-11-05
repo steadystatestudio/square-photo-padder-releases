@@ -73,10 +73,16 @@ def test_normal_window_and_event_loop_are_used_without_automatic_actions(tmp_pat
     with (patch.object(app, "QApplication") as application_class,
           patch.object(app, "MainWindow") as window_class,
           patch.object(app, "_isolate_qa_settings") as isolate,
+          patch.object(app, "_settings") as settings_factory,
+          patch.object(app, "prepare_initial_appearance") as initial,
+          patch.object(app, "prepare_window_for_show") as prefit,
           patch.object(app, "apply_theme"), patch.object(app, "install_theme_watcher"),
           patch.object(app, "_load_app_icon")):
         application_class.instance.return_value = application
         assert app.main() == 17
+    initial.assert_called_once_with(application, settings_factory.return_value, theme_key="ui/appearance")
+    window_class.assert_called_once_with(appearance_settings=settings_factory.return_value)
+    prefit.assert_called_once_with(window_class.return_value, window_class.return_value._fit_to_screen)
     assert window_class.return_value.method_calls == [("show", (), {})]
     application.exec.assert_called_once_with()
     if qa_mode:

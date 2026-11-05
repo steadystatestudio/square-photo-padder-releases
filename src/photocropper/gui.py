@@ -228,9 +228,9 @@ def _make_seg_button(label: str, data: object) -> QPushButton:
 
 
 class MainWindow(QMainWindow):
-    def __init__(self) -> None:
+    def __init__(self, appearance_settings=None) -> None:
         super().__init__()
-        self.appearance_settings = _settings()
+        self.appearance_settings = _settings() if appearance_settings is None else appearance_settings
         configure_appearance(QApplication.instance(), self.appearance_settings, theme_key="ui/appearance")
         apply_theme(QApplication.instance())
         self.setWindowTitle(WINDOW_TITLE)

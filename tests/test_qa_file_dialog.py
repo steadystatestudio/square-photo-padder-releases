@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QSettings
-from PySide6.QtGui import QFont, QFontDatabase
+from PySide6.QtGui import QFont, QFontDatabase, QPalette
 from PySide6.QtWidgets import (
     QAbstractButton,
     QAbstractItemView,
@@ -26,7 +26,7 @@ SOURCE = next((Path(__file__).parents[1] / "src").glob("*/qa_file_dialog.py")).p
 HELPER = importlib.import_module(SOURCE.name + ".qa_file_dialog")
 QA = importlib.import_module(SOURCE.name + ".appearance_qa")
 APPEARANCE = importlib.import_module(SOURCE.name + ".appearance")
-FONTS = importlib.import_module(SOURCE.name + ".system_fonts")
+THEMES = importlib.import_module(SOURCE.name + ".themes")
 
 
 @pytest.fixture(scope="module")
@@ -100,14 +100,22 @@ def test_picker_snapshot_restores_missing_group(tmp_path):
 
 
 def test_real_picker_font_cancel_and_native_history_restoration(app, tmp_path):
+    window = QWidget()
+    if getattr(app, "_studio_pilot_configured", False):
+        QA._settle_geometry(app, window, normal=False)
     old_font = app.font()
     old_style = app.styleSheet()
     old_tooltip = QToolTip.font()
+    old_palette = QPalette(app.palette())
+    had_refresh = hasattr(app, "_studio_refresh_appearance")
+    old_refresh = getattr(app, "_studio_refresh_appearance", None)
+    had_theme_guard = hasattr(app, "_spp_applying_theme")
+    old_theme_guard = getattr(app, "_spp_applying_theme", False)
+    old_colors = dict(THEMES.active_colors)
     old_settings = getattr(app, "_studio_pilot_settings", None)
     old_key = getattr(app, "_studio_appearance_theme_key", "theme")
     resolved = getattr(app, "_studio_appearance_resolved_font", None)
     old_resolved_font = QFont(resolved) if resolved is not None else None
-    window = QWidget()
     history = QSettings(QSettings.NativeFormat, QSettings.UserScope, "QtProject")
     history.setFallbacksEnabled(False)
     before = group(history)
@@ -120,7 +128,7 @@ def test_real_picker_font_cancel_and_native_history_restoration(app, tmp_path):
         settings.setValue("appearance/font_family", app.font().family())
         settings.setValue("appearance/font_size_pt", 18)
         APPEARANCE.configure_appearance(app, settings, theme_key="theme")
-        app.setStyleSheet("QWidget { " + FONTS.system_font_css(app) + " }")
+        THEMES.apply_theme(app)
         assert app.font().pointSizeF() == 18
         window.show()
         destination = tmp_path / "appearance"
@@ -160,6 +168,27 @@ def test_real_picker_font_cancel_and_native_history_restoration(app, tmp_path):
         if old_resolved_font is not None:
             app._studio_appearance_resolved_font = old_resolved_font
         app.setFont(old_font)
-        app.setStyleSheet(old_style)
-        QToolTip.setFont(old_tooltip)
+        THEMES.apply_theme(app)
         app.processEvents()
+        # Drain the old font-change callback before restoring the caller's exact
+        # palette, stylesheet and callback; it otherwise re-applies the theme.
+        app.processEvents()
+        # Restore even a caller's non-Studio stylesheet without re-entering the
+        # installed palette watcher. This is the same guard used by apply_theme.
+        app._spp_applying_theme = True
+        try:
+            app.setPalette(old_palette)
+            if app.styleSheet() != old_style:
+                app.setStyleSheet(old_style)
+        finally:
+            if had_theme_guard:
+                app._spp_applying_theme = old_theme_guard
+            else:
+                del app._spp_applying_theme
+        THEMES.active_colors.clear()
+        THEMES.active_colors.update(old_colors)
+        if had_refresh:
+            app._studio_refresh_appearance = old_refresh
+        elif hasattr(app, "_studio_refresh_appearance"):
+            del app._studio_refresh_appearance
+        QToolTip.setFont(old_tooltip)

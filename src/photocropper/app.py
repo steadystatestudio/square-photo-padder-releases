@@ -7,8 +7,10 @@ from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
+from photocropper.appearance import prepare_initial_appearance, prepare_window_for_show
 from photocropper.constants import APP_NAME, APP_ORGANIZATION
 from photocropper.gui import MainWindow
+from photocropper.settings import _settings
 from photocropper.themes import apply_theme, install_theme_watcher
 
 
@@ -69,6 +71,8 @@ def main() -> int:
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(APP_ORGANIZATION)
     app.setStyle("Fusion")
+    settings = _settings()
+    prepare_initial_appearance(app, settings, theme_key="ui/appearance")
 
     try:
         apply_theme(app)
@@ -77,6 +81,7 @@ def main() -> int:
     install_theme_watcher(app)
     app.setWindowIcon(_load_app_icon())
 
-    window = MainWindow()
+    window = MainWindow(appearance_settings=settings)
+    prepare_window_for_show(window, window._fit_to_screen)
     window.show()
     return app.exec()

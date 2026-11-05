@@ -23,9 +23,11 @@ def _run(directory: str) -> int:
     from PySide6.QtCore import QSettings
     from PySide6.QtWidgets import QApplication
 
+    from .appearance import prepare_initial_appearance, prepare_window_for_show
     from .constants import APP_NAME, APP_ORGANIZATION
     from .gui import MainWindow
     from .processor import ProcessingOptions, ResizeSetting, process_image
+    from .settings import _settings
     from .themes import apply_theme
 
     root = Path(directory).resolve()
@@ -48,11 +50,14 @@ def _run(directory: str) -> int:
             path = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts" / name
             if path.is_file():
                 QFontDatabase.addApplicationFont(str(path))
+    settings = _settings()
+    prepare_initial_appearance(app, settings, theme_key="ui/appearance")
     apply_theme(app)
     source = root / "sample.png"
     Image.new("RGB", (60, 40), "red").save(source)
     before = source.read_bytes()
-    window = MainWindow()
+    window = MainWindow(appearance_settings=settings)
+    prepare_window_for_show(window, window._fit_to_screen)
     window.show()
     window._open_paths([source])
     app.processEvents()

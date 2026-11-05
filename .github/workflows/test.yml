@@ -6,10 +6,17 @@ on:
     branches: [main]
   workflow_dispatch:
   workflow_call:
+    inputs:
+      reusable_invocation:
+        description: Marks a reusable invocation, including calls from push workflows
+        type: boolean
+        default: true
 permissions:
   contents: read
 jobs:
   test:
+    # A reusable call remains a quality gate even if its caller handles a push.
+    if: inputs.reusable_invocation || github.event_name != 'push' || github.repository != 'steadystatestudio/square-photo-padder-builds' || github.event.repository.private != true
     strategy:
       fail-fast: false
       matrix:
@@ -20,6 +27,9 @@ jobs:
       QT_QPA_PLATFORM: offscreen
       PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
     steps:
+      - name: Preserve Git blob bytes on Windows
+        if: runner.os == 'Windows'
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -33,7 +43,7 @@ jobs:
       - run: python -m ruff check src tests scripts
       - name: Prepare test artifacts directory
         run: python -c "from pathlib import Path; Path('artifacts').mkdir(exist_ok=True)"
-      - run: python -m pytest -q --basetemp=artifacts/pytest-temp --junitxml=artifacts/tests.xml
+      - run: python -m pytest -q --basetemp="${{ runner.temp }}/padder-${{ github.run_id }}-${{ github.run_attempt }}" --junitxml=artifacts/tests.xml
       - name: Build testing packages
         if: matrix.python == '3.12'
         run: python scripts/build.py

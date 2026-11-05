@@ -42,7 +42,7 @@ A square crop can cut off a tall subject or the edges of a wide photo. Padding p
 
 ## Download
 
-Choose the Windows ZIP or Linux AppImage from [GitHub Releases](https://github.com/steadystatestudio/square-photo-padder-releases/releases).
+Choose the Windows ZIP or Linux AppImage from [GitHub Releases](https://github.com/steadystatestudio/square-photo-padder-releases/releases). The packages include Python; automatic Linux appearance matching requires neither system Python nor PyGObject. The selected release's `RELEASE-READY.json` records exact packages, tested desktops and verification limits.
 
 | Platform | Download |
 |----------|----------|

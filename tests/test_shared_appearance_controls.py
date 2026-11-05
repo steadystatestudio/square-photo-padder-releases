@@ -12,8 +12,10 @@ from photocropper.appearance_controls import AppearanceControls, AppearanceSetti
 def controls(tmp_path, monkeypatch):
     app = QApplication.instance() or QApplication([])
     font = QFont(app.font())
-    monkeypatch.setattr(appearance, "_start_native", lambda *_: None)
-    monkeypatch.setattr(appearance, "_start_portal", lambda *_: None)
+    for provider, function in (("gtk", "_start_native"), ("portal", "_start_portal")):
+        monkeypatch.setattr(appearance, function,
+                            lambda instance, generation, name=provider: appearance._provider_finished(
+                                instance, generation, name, {"reason": "fixture-unavailable"}))
     settings = QSettings(str(tmp_path / "preferences.ini"), QSettings.IniFormat)
     settings.setFallbacksEnabled(False)
     settings.setValue("ui/appearance", "dark")

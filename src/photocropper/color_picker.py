@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 )
 
 from photocropper.desktop_geometry import available_geometry, workarea_provider
+from photocropper.window_screen import observe_window_screen
 from photocropper.settings import load_custom_colors, save_custom_colors
 from photocropper.themes import active_colors, ui_scale
 
@@ -326,9 +327,7 @@ class BackgroundColorDialog(QDialog):
 
     def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)
-        if self.windowHandle() and not getattr(self, "_fit_screen_connected", False):
-            self.windowHandle().screenChanged.connect(self._screen_changed)
-            self._fit_screen_connected = True
+        observe_window_screen(self, self._screen_changed)
         self._fit_form()
 
     def _screen_changed(self, *_):

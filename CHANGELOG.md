@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.4 - 2026-11-05
 
 - Keep the selected output size and exported dimensions in sync when assistive technology uses Toggle.
 - Require Pillow 13.0.0 or later and use 13.0.0 for packaged builds.

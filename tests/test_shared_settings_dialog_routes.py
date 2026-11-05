@@ -5,14 +5,16 @@ import os
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QSettings
-from PySide6.QtGui import QColor
+from PySide6.QtCore import QCoreApplication, QEvent, QSettings
+from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QWidget
+from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QToolTip, QWidget
 
 SOURCE = next((Path(__file__).parents[1] / "src").glob("*/appearance_controls.py")).parent
 CONTROLS = importlib.import_module(SOURCE.name + ".appearance_controls")
 APPEARANCE = importlib.import_module(SOURCE.name + ".appearance")
+QA = importlib.import_module(SOURCE.name + ".appearance_qa")
+THEMES = importlib.import_module(SOURCE.name + ".themes")
 
 
 @pytest.fixture(scope="module")
@@ -24,10 +26,21 @@ def app():
 
 @pytest.fixture
 def staged_dialog(app, tmp_path, monkeypatch):
+    parent = QWidget()
+    if getattr(app, "_studio_pilot_configured", False):
+        QA._settle_geometry(app, parent, normal=False)
     old_font = app.font()
     old_style = app.styleSheet()
+    old_palette, old_tooltip = QPalette(app.palette()), QFont(QToolTip.font())
+    had_refresh = hasattr(app, "_studio_refresh_appearance")
+    old_refresh = getattr(app, "_studio_refresh_appearance", None)
+    had_guard = hasattr(app, "_spp_applying_theme")
+    old_guard = getattr(app, "_spp_applying_theme", False)
+    old_colors = dict(THEMES.active_colors)
     old_settings = getattr(app, "_studio_pilot_settings", None)
     old_key = getattr(app, "_studio_appearance_theme_key", "theme")
+    resolved = getattr(app, "_studio_appearance_resolved_font", None)
+    old_resolved = QFont(resolved) if resolved is not None else None
     monkeypatch.setattr(
         APPEARANCE,
         "_start_native",
@@ -44,7 +57,6 @@ def staged_dialog(app, tmp_path, monkeypatch):
     )
     settings = QSettings(str(tmp_path / "settings.ini"), QSettings.IniFormat)
     settings.setValue("unrelated", "retained")
-    parent = QWidget()
     dialogs = []
     calls = []
 
@@ -61,10 +73,33 @@ def staged_dialog(app, tmp_path, monkeypatch):
         dialog.deleteLater()
     parent.close()
     parent.deleteLater()
+    QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
     APPEARANCE.configure_appearance(app, old_settings, theme_key=old_key)
+    if old_resolved is not None:
+        app._studio_appearance_resolved_font = old_resolved
     app.setFont(old_font)
-    app.setStyleSheet(old_style)
+    THEMES.apply_theme(app)
     app.processEvents()
+    app.processEvents()
+    # Padder's palette watcher is synchronous. Restore caller-specific style
+    # through the same guard as apply_theme rather than re-entering that watcher.
+    app._spp_applying_theme = True
+    try:
+        app.setPalette(old_palette)
+        if app.styleSheet() != old_style:
+            app.setStyleSheet(old_style)
+    finally:
+        if had_guard:
+            app._spp_applying_theme = old_guard
+        else:
+            del app._spp_applying_theme
+    THEMES.active_colors.clear()
+    THEMES.active_colors.update(old_colors)
+    if had_refresh:
+        app._studio_refresh_appearance = old_refresh
+    elif hasattr(app, "_studio_refresh_appearance"):
+        del app._studio_refresh_appearance
+    QToolTip.setFont(old_tooltip)
 
 
 def test_actual_save_button_persists_overrides_and_applies(staged_dialog, app):

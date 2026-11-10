@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Ask before Overwrite replaces original photos, stating how many will be replaced and that the original image and its metadata are not kept. Declining changes nothing.
+- Treat `.JPG` like `.jpg` on Linux. Overwrite previously left `IMG_001.JPG` in place and wrote a second `IMG_001.jpg` beside it.
+- Give saved copies ordinary file permissions on Linux instead of owner-only access; a replaced photo keeps the permissions it had.
+
 ## 1.4.4 - 2026-11-05
 
 - Keep the selected output size and exported dimensions in sync when assistive technology uses Toggle.

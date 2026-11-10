@@ -177,6 +177,14 @@ def _save_completed_image(
         with os.fdopen(descriptor, "wb") as handle:
             image.save(handle, format="JPEG", quality=JPEG_QUALITY, subsampling=0)
             handle.flush()
+            if os.name != "nt":
+                # mkstemp creates an owner-only file. A replaced photo keeps its
+                # permissions; a new copy gets the ordinary ones for a new file.
+                try:
+                    mode = stat.S_IMODE(source.stat().st_mode) if overwrite else _new_file_mode()
+                    os.fchmod(handle.fileno(), mode)
+                except OSError:
+                    pass  # The folder has no permission bits to set.
             os.fsync(handle.fileno())
         if overwrite:
             if _source_identity(source) != source_identity:
@@ -199,6 +207,17 @@ def _save_completed_image(
             # The completed output may already be published. A leftover temporary
             # file must not turn a successful save into a misleading failure.
             logging.getLogger(__name__).warning("Could not remove temporary image %s", temporary_path, exc_info=True)
+
+
+def _new_file_mode() -> int:
+    mask = os.umask(0)
+    os.umask(mask)
+    return 0o666 & ~mask
+
+
+def replaces_source(source_path: Path) -> bool:
+    """Whether Overwrite would replace this original rather than save a copy."""
+    return Path(source_path).suffix.lower() == OUTPUT_EXTENSION
 
 
 def _publish_no_replace(source: Path, destination: Path) -> None:
@@ -266,6 +285,10 @@ def output_path_for(source_path: Path, overwrite: bool = False) -> Path:
     output_dir = source_path.parent
     safe_stem = re.sub(r'[\x00/\\]', '_', source_path.stem)
     if overwrite:
+        if replaces_source(source_path) and safe_stem == source_path.stem:
+            # IMG_001.JPG is the source .jpg photo on every platform. Returning a
+            # lowercase name left the original beside a new file on Linux.
+            return source_path
         return output_dir / f"{safe_stem}{OUTPUT_EXTENSION}"
 
     index = 1

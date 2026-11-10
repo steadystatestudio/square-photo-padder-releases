@@ -81,6 +81,7 @@ from photocropper.processor import (
     expand_input_paths,
     generate_preview,
     process_images,
+    replaces_source,
 )
 from photocropper.settings import (
     StoredProcessingPreference,
@@ -871,6 +872,25 @@ class MainWindow(QMainWindow):
             overwrite=self.overwrite_check.isChecked(),
         )
 
+    def _confirm_replace_originals(self, count: int) -> bool:
+        """Overwrite cannot be undone, so it is confirmed once per run with its real scope."""
+        noun = "photo" if count == 1 else "photos"
+        box = QMessageBox(
+            QMessageBox.Icon.Warning, "Replace original photos?",
+            f"Replace {count:,} original .jpg {noun}?", QMessageBox.StandardButton.NoButton, self,
+        )
+        box.setInformativeText(
+            "Each one is saved again as a square JPEG under the same name. The original image and its "
+            "metadata, such as the date taken, are not kept. This cannot be undone.\n\n"
+            "Turn Overwrite off to save copies beside the originals instead."
+        )
+        replace_button = box.addButton("Replace", QMessageBox.ButtonRole.DestructiveRole)
+        cancel_button = box.addButton(QMessageBox.StandardButton.Cancel)
+        box.setDefaultButton(cancel_button)
+        box.setEscapeButton(cancel_button)
+        box.exec()
+        return box.clickedButton() is replace_button
+
     def process_paths(self, paths: Iterable[Path]) -> BatchResult:
         if self._batch_running:
             return BatchResult(results=[])
@@ -879,6 +899,12 @@ class MainWindow(QMainWindow):
             batch = BatchResult(results=[])
             self._set_status("No files were provided.")
             return batch
+
+        if self.overwrite_check.isChecked():
+            replaced = sum(replaces_source(path) for path in expand_input_paths(unique_paths))
+            if replaced and not self._confirm_replace_originals(replaced):
+                self._set_status("Nothing was changed. Replacing originals was not confirmed.")
+                return BatchResult(results=[])
 
         owns_processing = not self._processing
         if owns_processing:

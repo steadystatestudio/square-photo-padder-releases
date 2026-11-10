@@ -1,6 +1,6 @@
 # Release candidate
 
-Square Photo Padder 1.4.4 keeps the selected output size and exported dimensions in sync when assistive technology uses Toggle. It requires Pillow 13.0.0 or later and pins 13.0.0 for packaged builds.
+Square Photo Padder 1.4.5 asks before Overwrite replaces original photos, treats `.JPG` like `.jpg` on Linux, and gives saved copies ordinary file permissions on Linux.
 
 Before publishing, verify actual exported dimensions after accessibility Toggle in both directions between 1000 and Original, plus mouse and keyboard selection across Original, presets and Custom. Confirm originals remain unchanged and outputs never upscale.
 

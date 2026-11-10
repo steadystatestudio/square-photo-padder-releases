@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.5 - 2026-11-09
 
 - Ask before Overwrite replaces original photos, stating how many will be replaced and that the original image and its metadata are not kept. Declining changes nothing.
 - Treat `.JPG` like `.jpg` on Linux. Overwrite previously left `IMG_001.JPG` in place and wrote a second `IMG_001.jpg` beside it.
